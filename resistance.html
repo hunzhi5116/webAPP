@@ -63,15 +63,21 @@
             gap: 0.8rem;
         }
 
-        /* 要求的紅色粗體放大選單樣式 */
+        /* 材料選擇：紅色、粗體、放大 */
         #material-select {
             padding: 8px;
             border-radius: 8px;
-            font-size: 1.2rem; 
-            font-weight: bold;
-            color: #dc2626; /* 紅色 */
-            border: 2px solid #dc2626;
+            font-size: 1.25rem; 
+            font-weight: 900;    
+            color: #e11d48;    
+            border: 2px solid #e11d48;
             background-color: #fff1f2;
+            cursor: pointer;
+        }
+
+        #material-select option {
+            font-weight: bold;
+            color: #e11d48;
         }
 
         .label-row {
@@ -189,7 +195,7 @@
     </div>
 
     <div class="info-tips">
-        💡 <b>觀察重點：</b> 即使在全黑的背景中，雷神（左側）提供的電子也會順利流過淺色的導線並點亮右側的大燈泡。
+        💡 <b>觀察重點：</b> 電子已調整為「鮮艷螢光藍」，並帶有外擴光暈，使其在淺色導線內更加顯眼。
     </div>
 </div>
 
@@ -208,9 +214,12 @@
 
     // 載入雷神圖案
     const thunderImg = new Image();
-    thunderImg.src = 'thunder.jpg';
+    thunderImg.crossOrigin = "anonymous";
+    thunderImg.src = 'thunder.png'; 
+    
     let imgLoaded = false;
     thunderImg.onload = () => { imgLoaded = true; };
+    thunderImg.onerror = () => { imgLoaded = false; };
 
     let electrons = [];
     let atoms = [];
@@ -229,18 +238,15 @@
             this.x += this.vx;
             this.y += this.vy;
 
-            // 碰撞邊界
             if (this.y < rect.y + this.radius || this.y > rect.y + rect.h - this.radius) {
                 this.vy *= -1;
             }
 
-            // 循環流動
             if (this.x > rect.x + rect.w) {
                 this.x = rect.x;
                 this.y = rect.y + Math.random() * rect.h;
             }
 
-            // 模擬電阻：隨機碰撞減速
             if (Math.random() < (rho * 0.06)) { 
                 this.vx *= 0.4; 
                 this.vy += (Math.random() - 0.5) * 2;
@@ -253,17 +259,23 @@
         draw() {
             ctx.beginPath();
             ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-            ctx.fillStyle = '#3b82f6';
+            // 修正為極鮮艷的螢光藍色
+            ctx.fillStyle = '#00ffff'; 
             ctx.fill();
-            ctx.shadowBlur = 5;
-            ctx.shadowColor = '#60a5fa';
+            
+            // 強化螢光效果 (Neon Glow)
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = '#00ffff';
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1;
             ctx.stroke();
+            
+            // 重設陰影避免影響後續繪製
             ctx.shadowBlur = 0;
         }
     }
 
     function initSimulation() {
-        // 強制校正畫布解析度
         canvas.width = canvasWrap.offsetWidth;
         canvas.height = canvasWrap.offsetHeight;
 
@@ -295,11 +307,9 @@
     }
 
     function drawBigBulb(x, y, R) {
-        // 亮度公式調整：R越小越亮
         const intensity = Math.min(1, 1.8 / (R + 0.4));
         const bulbRadius = 45;
 
-        // 1. 光暈
         const glow = ctx.createRadialGradient(x, y, 5, x, y, bulbRadius * 3);
         glow.addColorStop(0, `rgba(255, 255, 100, ${intensity * 0.6})`);
         glow.addColorStop(1, 'rgba(0,0,0,0)');
@@ -308,11 +318,9 @@
         ctx.arc(x, y, bulbRadius * 3, 0, Math.PI * 2);
         ctx.fill();
 
-        // 2. 燈座
         ctx.fillStyle = '#64748b';
         ctx.fillRect(x - 20, y + bulbRadius - 10, 40, 25);
 
-        // 3. 燈泡殼
         ctx.beginPath();
         ctx.arc(x, y, bulbRadius, 0, Math.PI * 2);
         ctx.fillStyle = intensity > 0.1 ? `rgba(255, 255, 0, ${intensity})` : '#1e293b';
@@ -321,7 +329,6 @@
         ctx.lineWidth = 3;
         ctx.stroke();
 
-        // 4. 燈絲
         ctx.beginPath();
         ctx.arc(x, y - 5, 15, Math.PI, 0);
         ctx.strokeStyle = intensity > 0.4 ? '#f97316' : '#475569';
@@ -330,7 +337,6 @@
     }
 
     function draw() {
-        // 第一層：全黑背景
         ctx.fillStyle = '#000000';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -340,28 +346,28 @@
         const rectX = (canvas.width - L) / 2;
         const rectY = (canvas.height - W) / 2;
 
-        // 第二層：雷神圖案 (左側入口)
-        const imgSize = 140;
-        const imgX = rectX - imgSize - 20;
+        const imgSize = 150;
+        const imgX = rectX - imgSize - 10;
         const imgY = canvas.height / 2 - imgSize / 2;
         
         if (imgLoaded) {
             ctx.drawImage(thunderImg, imgX, imgY, imgSize, imgSize);
         } else {
-            // 備用方案：如果圖片路徑錯誤，顯示一個雷電符號佔位
-            ctx.fillStyle = "#eab308";
+            ctx.fillStyle = "#fbbf24";
             ctx.font = "80px Arial";
-            ctx.fillText("⚡", imgX + 30, imgY + 100);
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText("⚡", imgX + imgSize/2, canvas.height/2);
         }
 
-        // 第三層：導線本體 (淺色)
-        ctx.fillStyle = '#f1f5f9'; // 淺色背景
-        ctx.strokeStyle = '#00d2ff'; // 發光藍邊緣
-        ctx.lineWidth = 4;
+        // 導線 (淺灰色超細線框)
+        ctx.fillStyle = '#f1f5f9'; 
+        ctx.strokeStyle = '#cbd5e1'; 
+        ctx.lineWidth = 0.8; 
         ctx.fillRect(rectX, rectY, L, W);
         ctx.strokeRect(rectX, rectY, L, W);
 
-        // 第四層：原子核
+        // 原子核
         atoms.forEach(atom => {
             ctx.beginPath();
             ctx.arc(atom.x, atom.y, 12, 0, Math.PI * 2);
@@ -374,17 +380,16 @@
             ctx.fillText(atom.symbol, atom.x, atom.y);
         });
 
-        // 第五層：電子
+        // 電子 (小藍點)
         electrons.forEach(e => {
             e.update({x: rectX, y: rectY, w: L, h: W}, rho);
             e.draw();
         });
 
-        // 第六層：燈泡 (右側出口)
+        // 燈泡
         const R = (rho * L / W);
         drawBigBulb(rectX + L + 90, canvas.height / 2, R);
 
-        // 更新 UI
         displayLength.textContent = L;
         displayWidth.textContent = W;
         displayR.textContent = R.toFixed(2);
