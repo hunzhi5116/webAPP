@@ -3,174 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>海水深度對顏色的影響 - 互動教學</title>
+    <title>AI 互動教學工具成果展</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+        
         body {
-            background-color: #ffffff;
-            font-family: "Microsoft JhengHei", "Heiti TC", sans-serif;
+            font-family: 'Noto Sans TC', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
         }
 
-        .color-box {
-            aspect-ratio: 1 / 0.8;
-            border-radius: 8px;
-            transition: background-color 0.1s ease-out;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        .glass-header {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
         }
 
-        .label-text {
-            font-weight: bold;
-            color: #1a1a1a;
-            margin-bottom: 1.5rem;
+        .card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* 自定義滑桿樣式 */
-        .slider-container input[type=range] {
-            -webkit-appearance: none;
-            width: 100%;
-            height: 12px;
-            background: #e2e8f0;
-            border-radius: 6px;
-            outline: none;
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
         }
 
-        .slider-container input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 24px;
-            height: 24px;
-            background: #48bb78;
-            border-radius: 50%;
-            cursor: pointer;
-            border: 2px solid white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        .btn-gradient {
+            background: linear-gradient(to right, #2563eb, #3b82f6);
+            transition: opacity 0.2s;
         }
 
-        .bg-ocean-dynamic {
-            transition: background-color 0.3s ease;
+        .btn-gradient:hover {
+            opacity: 0.9;
         }
     </style>
 </head>
-<body class="p-4 md:p-12 flex flex-col items-center">
+<body class="p-4 md:p-8">
 
-    <div class="max-w-5xl w-full">
-        <header class="mb-12 text-center">
-            <h1 class="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">海水深度對顏色的影響</h1>
-            <h2 class="text-xl text-center label-text">中正國中 龍婆婆</h2>
-        </header>
-
-        <!-- 原本顏色排 -->
-        <div class="mb-12">
-            <h2 class="text-xl text-center label-text">原本顏色</h2>
-            <div class="grid grid-cols-5 gap-4 md:gap-8" id="original-row">
-                <!-- 由 JS 填入 -->
-            </div>
+    <!-- 頂部標題區 -->
+    <header class="max-w-6xl mx-auto mb-12 text-center">
+        <div class="inline-block p-2 px-4 rounded-full bg-blue-100 text-blue-600 font-bold mb-4">
+            <i class="fas fa-robot mr-2"></i> 教師雞蛋：AI 實驗室
         </div>
+        <h1 class="text-4xl md:text-5xl font-extrabold text-gray-800 mb-4 tracking-tight">
+            AI 到處玩玩成果展
+        </h1>
+        <p class="text-gray-600 max-w-2xl mx-auto text-lg leading-relaxed">
+            透過 AI 輔助生成的互動式教學工具，讓科學與科技的學習變得更直觀、更有趣。
+        </p>
+    </header>
 
-        <!-- 海水中顏色排 -->
-        <div class="mb-16 p-6 rounded-2xl bg-slate-50 border border-slate-100 shadow-inner">
-            <h2 class="text-xl text-center label-text">海水中的顏色</h2>
-            <div class="grid grid-cols-5 gap-4 md:gap-8" id="filtered-row">
-                <!-- 由 JS 填入 -->
-            </div>
-        </div>
-
-        <!-- 底部互動控制區 -->
-        <div class="slider-container bg-white p-6 rounded-xl border border-slate-200 shadow-lg">
-            <div class="flex flex-col md:flex-row items-center gap-6">
-                <div class="whitespace-nowrap font-bold text-slate-700">
-                    海水深度 (1-250 公尺)：
+    <!-- 互動工具列表區 -->
+    <main class="max-w-6xl mx-auto">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            <!-- 工具卡片 1: 電阻模擬器 -->
+            <div class="bg-white rounded-2xl p-6 card-hover border border-gray-100 flex flex-col justify-between">
+                <div>
+                    <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center text-orange-600 mb-4 text-xl">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">電阻模擬器</h3>
+                    <p class="text-gray-500 mb-6">模擬歐姆定律，視覺化呈現電阻長度、截面積與材質對電阻值的影響。</p>
                 </div>
-                <input type="range" id="depth-slider" min="1" max="250" value="1" class="flex-grow">
-                <div class="min-w-[80px] text-right font-mono text-xl font-bold text-slate-800">
-                    <span id="depth-value">1</span> 公尺
+                <a href="resistor-simulator.html" class="btn-gradient text-white text-center py-3 rounded-xl font-semibold">
+                    開始體驗 <i class="fas fa-arrow-right ml-2"></i>
+                </a>
+            </div>
+
+            <!-- 工具卡片 2: 海水與顏色 -->
+            <div class="bg-white rounded-2xl p-6 card-hover border border-gray-100 flex flex-col justify-between">
+                <div>
+                    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 mb-4 text-xl">
+                        <i class="fas fa-water"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">海水與顏色模擬</h3>
+                    <p class="text-gray-500 mb-6">探索光線如何穿透不同深度的海水，以及顏色在水下的吸收規律。</p>
                 </div>
+                <a href="sea-water-color.html" class="btn-gradient text-white text-center py-3 rounded-xl font-semibold">
+                    開始體驗 <i class="fas fa-arrow-right ml-2"></i>
+                </a>
             </div>
+
+            <!-- 工具卡片 3: 題目製造機 (預留位置) -->
+            <div class="bg-white rounded-2xl p-6 card-hover border border-gray-100 flex flex-col justify-between">
+                <div>
+                    <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center text-purple-600 mb-4 text-xl">
+                        <i class="fas fa-file-signature"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">題目製造機</h3>
+                    <p class="text-gray-500 mb-6">利用 AI 快速生成物理、化學或生物科目的練習題與自動詳解。</p>
+                </div>
+                <a href="#" class="bg-gray-100 text-gray-400 text-center py-3 rounded-xl font-semibold cursor-not-allowed">
+                    即將推出
+                </a>
+            </div>
+
+            <!-- 更多卡片可在此處複製並增加 -->
+
         </div>
+    </main>
 
-        <!-- 科普小知識區 -->
-        <div class="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 text-sm text-slate-600">
-            <div class="p-4 bg-red-50 rounded-lg border-l-4 border-red-400">
-                <strong>紅光 (長波長)</strong>：能量最低，在 5-10 公尺處最先被水分子吸收。
-            </div>
-            <div class="p-4 bg-yellow-50 rounded-lg border-l-4 border-yellow-400">
-                <strong>黃光</strong>：大約在 50 公尺左右會明顯變暗，逐漸失去彩度。
-            </div>
-            <div class="p-4 bg-blue-50 rounded-lg border-l-4 border-blue-400">
-                <strong>藍光 (短波長)</strong>：能量最高，穿透力最強，在深海中仍能被看見。
-            </div>
+    <!-- 底部資訊 -->
+    <footer class="max-w-6xl mx-auto mt-20 text-center border-t border-gray-200 pt-8 text-gray-500 pb-10">
+        <p>© 2025 教師雞蛋 - 由 AI 與教育熱情驅動製作</p>
+        <div class="mt-4 space-x-4">
+            <a href="https://github.com/" class="hover:text-gray-800 transition-colors"><i class="fab fa-github"></i> GitHub Project</a>
         </div>
-    </div>
-
-<script>
-    // 定義五種對比顏色及其吸收係數 (模擬真實光譜衰減)
-    const colorConfigs = [
-        { name: '紅色', hex: '#FF0000', k: { r: 0.18, g: 0.04, b: 0.01 } },
-        { name: '黃色', hex: '#FFFF00', k: { r: 0.05, g: 0.02, b: 0.01 } },
-        { name: '綠色', hex: '#008000', k: { r: 0.03, g: 0.01, b: 0.01 } },
-        { name: '藍色', hex: '#0000FF', k: { r: 0.02, g: 0.01, b: 0.002 } },
-        { name: '灰色', hex: '#808080', k: { r: 0.08, g: 0.04, b: 0.02 } }
-    ];
-
-    const originalRow = document.getElementById('original-row');
-    const filteredRow = document.getElementById('filtered-row');
-    const slider = document.getElementById('depth-slider');
-    const depthDisplay = document.getElementById('depth-value');
-
-    // 初始化網頁元件
-    function init() {
-        colorConfigs.forEach((config, index) => {
-            // 建立原本顏色方塊
-            const origBox = document.createElement('div');
-            origBox.className = 'color-box';
-            origBox.style.backgroundColor = config.hex;
-            originalRow.appendChild(origBox);
-
-            // 建立過濾顏色方塊
-            const filterBox = document.createElement('div');
-            filterBox.className = 'color-box';
-            filterBox.id = `filtered-${index}`;
-            filteredRow.appendChild(filterBox);
-        });
-
-        updateColors(1);
-    }
-
-    // 顏色處理邏輯
-    function hexToRgb(hex) {
-        let r = 0, g = 0, b = 0;
-        if (hex.length === 7) {
-            r = parseInt(hex.substring(1, 3), 16);
-            g = parseInt(hex.substring(3, 5), 16);
-            b = parseInt(hex.substring(5, 7), 16);
-        }
-        return { r, g, b };
-    }
-
-    function updateColors(depth) {
-        colorConfigs.forEach((config, index) => {
-            const rgb = hexToRgb(config.hex);
-            const box = document.getElementById(`filtered-${index}`);
-
-            // 使用 Beer-Lambert Law 計算衰減
-            // I = I0 * e^(-k * depth)
-            const r = Math.floor(rgb.r * Math.exp(-config.k.r * (depth / 10)));
-            const g = Math.floor(rgb.g * Math.exp(-config.k.g * (depth / 10)));
-            const b = Math.floor(rgb.b * Math.exp(-config.k.b * (depth / 10)));
-
-            box.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
-        });
-    }
-
-    // 監聽滑桿動態
-    slider.addEventListener('input', (e) => {
-        const val = e.target.value;
-        depthDisplay.innerText = val;
-        updateColors(val);
-    });
-
-    init();
-</script>
+    </footer>
 
 </body>
 </html>
