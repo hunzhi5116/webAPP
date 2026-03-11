@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚡ 雷神實驗室：極致對比模擬器 ⚡</title>
+    <style>
+        :root {
+            --primary-color: #00d2ff;
+            --accent-color: #3a7bd5;
+            --bg-dark: #0f172a;
+            --card-bg: #ffffff;
+        }
+
+        body {
+            font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
+            background: var(--bg-dark);
+            color: #1e293b;
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1100px;
+            width: 100%;
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 2rem;
+            box-shadow: 0 0 50px rgba(0, 210, 255, 0.5);
+            border: 4px solid var(--primary-color);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .header h1 {
+            margin: 0;
+            background: linear-gradient(90deg, #3a7bd5, #00d2ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 2rem;
+        }
+
+        /* 控制面板 */
+        .control-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+            background: #f8fafc;
+            padding: 1.2rem;
+            border-radius: 1rem;
+            border: 1px solid #e2e8f0;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+        }
+
+        .label-row {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        .value-tag {
+            background: var(--accent-color);
+            color: white;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
+        input[type=range] {
+            accent-color: var(--accent-color);
+        }
+
+        /* 畫布區域 */
+        .canvas-container {
+            position: relative;
+            background: #000000; /* 背景回歸黑色 */
+            border-radius: 1.5rem;
+            overflow: hidden;
+            height: 500px;
+            border: 4px solid #334155;
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.8);
+        }
+
+        #animation-canvas {
+            display: block;
+        }
+
+        /* 數據看板 */
+        .data-board {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 1.5rem;
+        }
+
+        .stat-card {
+            background: #f1f5f9;
+            padding: 12px 20px;
+            border-radius: 15px;
+            text-align: center;
+            flex: 1;
+            max-width: 300px;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #1e40af;
+        }
+
+        .info-tips {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #92400e;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>⚡ 雷神理化實驗室：電阻微觀世界 ⚡</h1>
+    </div>
+
+    <div class="control-panel">
+        <div class="control-group">
+            <div class="label-row">材料選擇 (ρ)：</div>
+            <select id="material-select" style="padding: 5px; border-radius: 5px;">
+                <option value="0.10" data-color="#FFD700" data-symbol="Au">金 (Au) - 超低阻礙</option>
+                <option value="0.16" data-color="#C0C0C0" data-symbol="Ag" selected>銀 (Ag) - 傳導王者</option>
+                <option value="0.17" data-color="#B87333" data-symbol="Cu">銅 (Cu) - 導線首選</option>
+                <option value="3.50" data-color="#444444" data-symbol="C">石墨 (C) - 阻力巨大</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <div class="label-row">
+                <span>線段長度 (L)：</span>
+                <span class="value-tag" id="val-length">400</span>
+            </div>
+            <input type="range" id="input-length" min="200" max="650" value="400">
+        </div>
+
+        <div class="control-group">
+            <div class="label-row">
+                <span>線段寬度 (W)：</span>
+                <span class="value-tag" id="val-width">80</span>
+            </div>
+            <input type="range" id="input-width" min="30" max="140" value="80">
+        </div>
+    </div>
+
+    <div class="canvas-container" id="canvas-wrap">
+        <canvas id="animation-canvas"></canvas>
+    </div>
+
+    <div class="data-board">
+        <div class="stat-card">
+            <span style="font-size: 0.9rem;">電阻 R ≈</span><br>
+            <span class="stat-value" id="calc-r">0.00</span> Ω
+        </div>
+        <div class="stat-card">
+            <span style="font-size: 0.9rem;">目前能量輸出</span><br>
+            <span class="stat-value" id="calc-light" style="color:#eab308">非常亮</span>
+        </div>
+    </div>
+
+    <div class="info-tips">
+        💡 <b>重點：</b> 背景為黑色微觀空間，淺色區域為導線。請觀察當 <b>電阻 R 變大</b> 時，右側大燈泡的亮度會明顯衰減喔！
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('animation-canvas');
+    const ctx = canvas.getContext('2d');
+    const canvasWrap = document.getElementById('canvas-wrap');
+
+    const materialSelect = document.getElementById('material-select');
+    const inputLength = document.getElementById('input-length');
+    const inputWidth = document.getElementById('input-width');
+    const displayLength = document.getElementById('val-length');
+    const displayWidth = document.getElementById('val-width');
+    const displayR = document.getElementById('calc-r');
+    const displayLight = document.getElementById('calc-light');
+
+    // 載入雷神圖案
+    const thunderImg = new Image();
+    thunderImg.src = 'thunder.jpg';
+
+    let electrons = [];
+    let atoms = [];
+
+    class Electron {
+        constructor(x, y, targetSpeed) {
+            this.x = x;
+            this.y = y;
+            this.targetSpeed = targetSpeed;
+            this.vx = targetSpeed;
+            this.vy = (Math.random() - 0.5) * 0.3;
+            this.radius = 4;
+        }
+
+        update(rect, rho) {
+            this.x += this.vx;
+            this.y += this.vy;
+
+            // 導線內碰撞壁
+            if (this.y < rect.y + this.radius || this.y > rect.y + rect.h - this.radius) {
+                this.vy *= -1;
+            }
+
+            // 循環 (從左側重新發射)
+            if (this.x > rect.x + rect.w) {
+                this.x = rect.x;
+                this.y = rect.y + Math.random() * rect.h;
+            }
+
+            // 阻礙碰撞 (決定流速感)
+            if (Math.random() < (rho * 0.05)) { 
+                this.vx *= 0.3; // 嚴重碰撞
+                this.vy += (Math.random() - 0.5) * 2;
+            } else {
+                this.vx = this.vx * 0.97 + this.targetSpeed * 0.03;
+                this.vy *= 0.97;
+            }
+        }
+
+        draw() {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fillStyle = '#2563eb'; // 鮮豔藍色電子
+            ctx.fill();
+            ctx.strokeStyle = '#60a5fa';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+    }
+
+    function initSimulation() {
+        const L = parseInt(inputLength.value);
+        const W = parseInt(inputWidth.value);
+        const rho = parseFloat(materialSelect.value);
+        const option = materialSelect.options[materialSelect.selectedIndex];
+
+        canvas.width = canvasWrap.clientWidth;
+        canvas.height = canvasWrap.clientHeight;
+
+        const rectX = (canvas.width - L) / 2;
+        const rectY = (canvas.height - W) / 2;
+
+        // 初始化阻礙原子
+        atoms = [];
+        const atomDensity = Math.floor((L * W) / 800 * rho);
+        for (let i = 0; i < atomDensity; i++) {
+            atoms.push({
+                x: rectX + Math.random() * L,
+                y: rectY + Math.random() * W,
+                color: option.getAttribute('data-color'),
+                symbol: option.getAttribute('data-symbol')
+            });
+        }
+
+        // 初始化電子 (極低流速，方便觀察)
+        electrons = [];
+        const baseSpeed = Math.max(0.2, 1.2 / (rho * (L / 400))); 
+        const count = Math.floor(W * 0.5);
+        for (let i = 0; i < count; i++) {
+            electrons.push(new Electron(rectX + Math.random() * L, rectY + Math.random() * W, baseSpeed));
+        }
+    }
+
+    // 繪製加大版燈泡
+    function drawBigBulb(x, y, R) {
+        // 計算亮度：R越小，亮度越高
+        // 金 R約0.15 -> 亮 / 石墨 R約20 -> 暗
+        const intensity = Math.pow(Math.max(0.05, 1.5 / (R + 0.5)), 0.8);
+        
+        const bulbRadius = 35; // 加大燈泡尺寸
+
+        // 燈泡光暈
+        if (intensity > 0.1) {
+            const glow = ctx.createRadialGradient(x, y, 2, x, y, bulbRadius * 2.5);
+            glow.addColorStop(0, `rgba(255, 255, 150, ${intensity * 0.8})`);
+            glow.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            ctx.fillStyle = glow;
+            ctx.beginPath();
+            ctx.arc(x, y, bulbRadius * 2.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // 燈座
+        ctx.fillStyle = '#475569';
+        ctx.fillRect(x - 15, y + bulbRadius - 5, 30, 20);
+
+        // 燈泡外殼
+        ctx.beginPath();
+        ctx.arc(x, y, bulbRadius, 0, Math.PI * 2);
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        
+        // 內心填色
+        ctx.fillStyle = `rgba(255, 255, 0, ${intensity})`;
+        if (intensity < 0.1) ctx.fillStyle = '#334155'; // 幾乎不亮時變深灰色
+        ctx.fill();
+
+        // 燈絲
+        ctx.beginPath();
+        ctx.moveTo(x - 12, y + 10);
+        ctx.bezierCurveTo(x - 12, y - 15, x + 12, y - 15, x + 12, y + 10);
+        ctx.strokeStyle = intensity > 0.3 ? '#f97316' : '#64748b';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
+
+    function draw() {
+        // 背景填黑
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const L = parseInt(inputLength.value);
+        const W = parseInt(inputWidth.value);
+        const rho = parseFloat(materialSelect.value);
+        const rectX = (canvas.width - L) / 2;
+        const rectY = (canvas.height - W) / 2;
+
+        // 1. 繪製雷神 (左側)
+        const imgSize = 130;
+        if (thunderImg.complete) {
+            // 加入圓形遮罩與光暈讓圖案更好看
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(rectX - 85, canvas.height/2, 60, 0, Math.PI * 2);
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = '#00d2ff';
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.clip();
+            ctx.drawImage(thunderImg, rectX - 145, canvas.height/2 - 65, 120, 130);
+            ctx.restore();
+        }
+
+        // 2. 繪製導線線條 (淺灰色內部)
+        ctx.fillStyle = '#e2e8f0'; 
+        ctx.strokeStyle = '#38bdf8'; // 發光邊框
+        ctx.lineWidth = 4;
+        ctx.strokeRect(rectX, rectY, L, W);
+        ctx.fillRect(rectX, rectY, L, W);
+
+        // 3. 繪製原子
+        atoms.forEach(atom => {
+            ctx.beginPath();
+            ctx.arc(atom.x, atom.y, 11, 0, Math.PI * 2);
+            ctx.fillStyle = atom.color;
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+            ctx.stroke();
+
+            ctx.fillStyle = (atom.symbol === 'Ag' || atom.symbol === 'Au') ? '#000' : '#fff';
+            ctx.font = 'bold 11px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(atom.symbol, atom.x, atom.y);
+        });
+
+        // 4. 更新並繪製電子
+        electrons.forEach(e => {
+            e.update({x: rectX, y: rectY, w: L, h: W}, rho);
+            e.draw();
+        });
+
+        // 5. 繪製加大燈泡 (右側)
+        const R = (rho * L / W);
+        drawBigBulb(rectX + L + 75, canvas.height / 2, R);
+
+        // 6. 更新數據顯示
+        displayLength.textContent = L;
+        displayWidth.textContent = W;
+        displayR.textContent = R.toFixed(2);
+        
+        let lightText = "🌟 非常耀眼";
+        let lightColor = "#eab308";
+        if (R > 0.8) lightText = "💡 正常發亮";
+        if (R > 2.5) { lightText = "🔆 燈光昏暗"; lightColor = "#854d0e"; }
+        if (R > 8) { lightText = "🌑 熄滅邊緣"; lightColor = "#475569"; }
+        displayLight.textContent = lightText;
+        displayLight.style.color = lightColor;
+
+        requestAnimationFrame(draw);
+    }
+
+    [materialSelect, inputLength, inputWidth].forEach(el => {
+        el.addEventListener('input', initSimulation);
+    });
+    window.addEventListener('resize', initSimulation);
+
+    // 啟動模擬
+    initSimulation();
+    draw();
+</script>
+
+</body>
+</html>
