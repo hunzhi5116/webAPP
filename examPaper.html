@@ -92,10 +92,11 @@
             <h2 class="text-2xl font-bold mb-2 flex items-center"><i class="fas fa-cloud-upload-alt text-blue-500 mr-3"></i>第一步：上傳教材或文本</h2>
             <p class="text-gray-500 mb-6">請上傳包含教材內容的圖片進行 AI 辨識，或直接於下方文字框貼上文本。</p>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Upload Area -->
-                <div>
-                    <div id="drop-zone" class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 hover:bg-blue-50 transition-colors cursor-pointer flex flex-col items-center justify-center h-64 relative overflow-hidden">
+                <div class="flex flex-col h-full relative">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">1. 預覽畫面</label>
+                    <div id="drop-zone" class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 hover:bg-blue-50 transition-colors cursor-pointer flex flex-col items-center justify-center flex-grow relative overflow-hidden min-h-[16rem]">
                         <!-- Default state -->
                         <div id="drop-zone-content" class="w-full h-full flex flex-col items-center justify-center">
                             <i class="fas fa-file-image text-4xl text-gray-400 mb-4"></i>
@@ -107,7 +108,7 @@
                         <!-- Image Preview state -->
                         <div id="step1-image-container" class="hidden absolute inset-0 w-full h-full bg-white flex flex-col items-center justify-center p-2">
                             <img id="step1-preview-img" class="max-w-full max-h-full object-contain" src="" alt="上傳的圖片預覽">
-                            <div class="absolute top-2 right-2 bg-white/90 rounded px-2 py-1 text-xs text-gray-700 border shadow-sm">
+                            <div class="absolute top-2 right-2 bg-white/90 rounded px-2 py-1 text-xs text-gray-700 border shadow-sm cursor-pointer hover:bg-gray-100">
                                 <i class="fas fa-sync-alt mr-1"></i>重新上傳
                             </div>
                         </div>
@@ -121,10 +122,27 @@
                     </div>
                 </div>
 
-                <!-- Text Area -->
-                <div class="flex flex-col h-full">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">解析文本內容 (可手動修改)</label>
-                    <textarea id="source-text" class="w-full flex-grow border border-gray-300 rounded-lg p-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none h-64 shadow-sm" placeholder="上傳圖片後將自動帶入辨識結果，您也可以直接在此貼上欲出題的文章或重點整理..."></textarea>
+                <!-- 2. OCR Text Area -->
+                <div class="flex flex-col h-full relative">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">2. AI 辨識內容 (可手動微調)</label>
+                    <textarea id="ocr-text" class="w-full flex-grow border border-blue-200 bg-blue-50 rounded-lg p-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none h-64 shadow-sm" placeholder="圖片辨識的純文字將顯示於此，您可在此校對與修改。系統將依據此內容進行出題。"></textarea>
+                    <button onclick="analyzeText()" class="absolute bottom-4 right-4 bg-white border border-blue-300 text-blue-600 px-3 py-1.5 rounded shadow-sm text-sm hover:bg-blue-50 transition-colors">
+                        <i class="fas fa-magic mr-1"></i>重整解析
+                    </button>
+                </div>
+
+                <!-- 3. Analyzed Text Area -->
+                <div class="flex flex-col h-full relative">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">3. 解析文本 (意涵重點，唯讀)</label>
+                    <textarea id="analyzed-text" readonly class="w-full flex-grow border border-gray-300 bg-gray-100 rounded-lg p-4 focus:outline-none resize-none h-64 shadow-sm text-gray-600" placeholder="AI 將自動在此產出文本意涵與重點解析..."></textarea>
+                    
+                    <!-- Loading overlay for analysis -->
+                    <div id="analysis-loading" class="hidden absolute inset-0 bg-gray-100/90 flex items-center justify-center rounded-lg mt-7 z-10">
+                        <div class="text-blue-600 flex flex-col items-center">
+                            <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                            <span class="text-sm font-medium">AI 正在解析意涵...</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -308,7 +326,6 @@
         const dropZone = document.getElementById('drop-zone');
         const fileUpload = document.getElementById('file-upload');
         const ocrLoading = document.getElementById('ocr-loading');
-        const sourceText = document.getElementById('source-text');
 
         dropZone.addEventListener('click', () => fileUpload.click());
         
@@ -337,8 +354,10 @@
 
         // Step Navigation
         function nextStep(step) {
-            if (step === 2 && sourceText.value.trim() === '') {
-                alert('請上傳圖片或輸入文本內容！');
+            const ocrContent = document.getElementById('ocr-text') ? document.getElementById('ocr-text').value.trim() : '';
+            
+            if (step === 2 && ocrContent === '') {
+                alert('請先上傳圖片或於「文字轉換」區塊輸入文本內容！');
                 return;
             }
 
@@ -410,11 +429,13 @@
                     // Try to use Gemini Vision API if key is available
                     if (apiKey) {
                         const text = await extractTextWithGemini(file.type, base64Data);
-                        sourceText.value = text;
+                        document.getElementById('ocr-text').value = text;
+                        await analyzeText();
                     } else {
-                        // Simulation for mockup
+                        // Simulation for mockup (改為輸出您的理化題目假資料)
                         setTimeout(() => {
-                            sourceText.value = "這是一段從圖片中辨識出來的模擬文本。\n\n台灣位於亞洲東部、太平洋西北側，為一個島嶼國家。氣候兼具熱帶與亞熱帶季風氣候特徵。由於位處歐亞板塊與菲律賓海板塊交界處，地震頻繁但也造就了豐富的高山地形。\n\n歷史上，台灣曾受荷蘭、西班牙、明鄭、清朝及日本統治，並於1945年後由中華民國接管。這使得台灣的文化呈現多元融合的特色，包含原住民文化、漢人文化及近代西方與日本文化的影響。";
+                            document.getElementById('ocr-text').value = `一、選擇：(每個題目 3 分，共 90 分)\n1. (  )將 60 公克、35°C 的水與 40 公克、85°C 的水混合，假設熱量無損失，則當達到熱平衡時，就「熱量傳播」的過程而言，下列敘述何者正確？\n(A)40 公克的水吸收熱量 1200 卡\n(B)60 公克的水放出熱量 1500 卡\n(C)60 公克的水吸收熱量 1200 卡\n(D)40 公克的水放出熱量 1500 卡。`;
+                            analyzeTextMock();
                         }, 2000);
                     }
                 } catch (err) {
@@ -463,6 +484,49 @@
             return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
         }
 
+        // --- New Analysis Logic ---
+        async function analyzeText() {
+            const text = document.getElementById('ocr-text').value.trim();
+            if (!text) return;
+
+            const loading = document.getElementById('analysis-loading');
+            loading.classList.remove('hidden');
+
+            try {
+                if (apiKey) {
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+                    const payload = {
+                        contents: [{
+                            role: "user",
+                            parts: [{ text: `請簡要解析以下文本的核心意涵與重點（約 100-200 字），直接輸出解析內容即可，不需額外開頭語：\n\n${text}` }]
+                        }]
+                    };
+                    const data = await fetchWithRetry(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    document.getElementById('analyzed-text').value = data.candidates?.[0]?.content?.parts?.[0]?.text || "解析失敗。";
+                } else {
+                    analyzeTextMock();
+                }
+            } catch (e) {
+                console.error(e);
+                document.getElementById('analyzed-text').value = "解析發生錯誤。";
+            } finally {
+                loading.classList.add('hidden');
+            }
+        }
+
+        function analyzeTextMock() {
+            const loading = document.getElementById('analysis-loading');
+            loading.classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('analyzed-text').value = "【AI 意涵重點解析】\n本題測驗核心為「熱平衡」與「熱量守恆」觀念（放出的熱量 = 吸收的熱量）。\n重點在於計算不同溫度的水混合後的末溫，並分別求出高溫水放出的熱量與低溫水吸收的熱量，藉此判斷各選項的數值正確性。";
+                loading.classList.add('hidden');
+            }, 1500);
+        }
+
         // Generate Exam Logic
         async function generateExam() {
             // Get params
@@ -473,7 +537,9 @@
             }
             const count = document.getElementById('q-count').value;
             const diff = document.getElementById('q-difficulty').value;
-            const text = sourceText.value;
+            
+            const ocrContent = document.getElementById('ocr-text').value.trim();
+            const text = ocrContent; // 以文字轉換的內容作為出題依據
 
             // UI Transition
             document.getElementById('step2').classList.replace('active-step', 'hidden-step');
@@ -553,24 +619,24 @@
                 const type = types[(i - 1) % types.length];
                 if (type === '單選題') {
                     mock.push({
-                        id: i, type: "單選題", question: `關於台灣地理位置的敘述，下列何者正確？`,
-                        options: ["A. 位於大西洋", "B. 位於歐亞板塊與菲律賓海板塊交界處", "C. 氣候為寒帶氣候", "D. 沒有高山地形"],
-                        answer: "B", explanation: "根據文本，台灣位處歐亞板塊與菲律賓海板塊交界處，地震頻繁且造就豐富高山地形。"
+                        id: i, type: "單選題", question: `質量 50 公克、溫度 20°C 的水，與質量 50 公克、溫度 80°C 的水混合，若無熱量散失，達熱平衡時的水溫為多少？`,
+                        options: ["A. 40°C", "B. 50°C", "C. 60°C", "D. 70°C"],
+                        answer: "B", explanation: "兩杯水質量相同，達熱平衡時末溫為兩者溫度的平均值：(20+80)/2 = 50°C。"
                     });
                 } else if (type === '是非題') {
                     mock.push({
-                        id: i, type: "是非題", question: `台灣的文化特色為單一民族文化，沒有受到其他國家的影響。`,
-                        options: [], answer: "X (非)", explanation: "台灣文化呈現多元融合的特色，包含原住民、漢人、及西方與日本文化的影響。"
+                        id: i, type: "是非題", question: `熱平衡的過程中，高溫物體放出的熱量必定等於低溫物體吸收的熱量（假設無熱量散失）。`,
+                        options: [], answer: "O (是)", explanation: "根據熱量守恆定律，在無熱量散失的情況下，放熱必等於吸熱。"
                     });
                 } else if (type === '填充題') {
                     mock.push({
-                        id: i, type: "填充題", question: `台灣歷史上曾受荷蘭、_______、明鄭、清朝及日本統治。`,
-                        options: [], answer: "西班牙", explanation: "文本提及：歷史上曾受荷蘭、西班牙、明鄭、清朝及日本統治。"
+                        id: i, type: "填充題", question: `熱量傳播的過程中，熱量必定由溫度_______的物體傳向溫度_______的物體。`,
+                        options: [], answer: "高，低", explanation: "熱量傳播的方向取決於溫度的高低，而非熱量的多寡。"
                     });
                 } else {
                     mock.push({
-                        id: i, type: "簡答題", question: `請簡述造就台灣豐富高山地形的主要原因。`,
-                        options: [], answer: "位於歐亞板塊與菲律賓海板塊交界處的板塊擠壓。", explanation: "板塊運動是造山運動的主因。"
+                        id: i, type: "簡答題", question: `請簡述何謂「熱平衡」。`,
+                        options: [], answer: "當兩個不同溫度的物體接觸時，熱量會從高溫物體傳遞到低溫物體，直到兩者溫度相等為止，此狀態稱為熱平衡。", explanation: "熱平衡定義為系統內部各部分溫度達到一致的狀態。"
                     });
                 }
             }
