@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 題目製造機</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .step-transition {
+            transition: all 0.3s ease-in-out;
+        }
+        .hidden-step {
+            display: none;
+            opacity: 0;
+        }
+        .active-step {
+            display: block;
+            opacity: 1;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .drag-active {
+            border-color: #3b82f6 !important;
+            background-color: #eff6ff !important;
+        }
+        /* 自定義捲軸 */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+        
+        /* 試卷預覽樣式 */
+        .paper-content h3 { font-size: 1.125rem; font-weight: 600; margin-top: 1rem; margin-bottom: 0.5rem; color: #1f2937; }
+        .paper-content p { margin-bottom: 0.5rem; color: #4b5563; line-height: 1.6; }
+        .paper-content .options { margin-left: 1.5rem; margin-bottom: 1rem; }
+        .paper-content .answer-block { background-color: #f0fdf4; border-left: 4px solid #22c55e; padding: 0.75rem; margin-top: 0.5rem; margin-bottom: 1.5rem; border-radius: 0 0.375rem 0.375rem 0; }
+        .paper-content .answer-text { font-weight: bold; color: #166534; }
+        .paper-content .explanation-text { color: #15803d; font-size: 0.875rem; margin-top: 0.25rem; }
+    </style>
+</head>
+<body class="text-gray-800 min-h-screen flex flex-col">
+
+    <!-- Navbar -->
+    <nav class="bg-blue-600 text-white shadow-md">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fas fa-robot text-2xl"></i>
+                <span class="text-xl font-bold tracking-wider">AI 題目製造機</span>
+            </div>
+            <div class="text-sm bg-blue-700 px-3 py-1 rounded-full">
+                <i class="fas fa-graduation-cap mr-1"></i> 教師專屬工具
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-6xl mx-auto w-full px-4 py-8">
+        
+        <!-- Stepper -->
+        <div class="mb-8">
+            <div class="flex items-center justify-center space-x-4 md:space-x-8">
+                <div class="flex flex-col items-center step-indicator" id="ind-step1">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white bg-blue-600 shadow-lg transition-colors duration-300">1</div>
+                    <span class="text-sm mt-2 font-medium text-blue-600">上傳與辨析</span>
+                </div>
+                <div class="w-12 md:w-24 h-1 bg-gray-300 rounded" id="line-1"></div>
+                
+                <div class="flex flex-col items-center step-indicator" id="ind-step2">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-gray-500 bg-gray-200 transition-colors duration-300">2</div>
+                    <span class="text-sm mt-2 font-medium text-gray-500">參數設定</span>
+                </div>
+                <div class="w-12 md:w-24 h-1 bg-gray-300 rounded" id="line-2"></div>
+                
+                <div class="flex flex-col items-center step-indicator" id="ind-step3">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-gray-500 bg-gray-200 transition-colors duration-300">3</div>
+                    <span class="text-sm mt-2 font-medium text-gray-500">產出與下載</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= STEP 1: Upload & Extract ================= -->
+        <div id="step1" class="active-step bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8">
+            <h2 class="text-2xl font-bold mb-2 flex items-center"><i class="fas fa-cloud-upload-alt text-blue-500 mr-3"></i>第一步：上傳教材或文本</h2>
+            <p class="text-gray-500 mb-6">請上傳包含教材內容的圖片進行 AI 辨識，或直接於下方文字框貼上文本。</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Upload Area -->
+                <div>
+                    <div id="drop-zone" class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 hover:bg-blue-50 transition-colors cursor-pointer flex flex-col items-center justify-center h-64">
+                        <i class="fas fa-file-image text-4xl text-gray-400 mb-4"></i>
+                        <p class="text-gray-600 font-medium mb-1">點擊或拖曳圖片至此</p>
+                        <p class="text-xs text-gray-400">支援 JPG, PNG 格式圖片</p>
+                        <input type="file" id="file-upload" class="hidden" accept="image/*">
+                        <button class="mt-4 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors">選擇檔案</button>
+                    </div>
+                    
+                    <!-- Loading state for OCR -->
+                    <div id="ocr-loading" class="hidden mt-4 bg-blue-50 border border-blue-100 text-blue-700 px-4 py-3 rounded-lg flex items-center">
+                        <i class="fas fa-spinner fa-spin mr-3"></i> 
+                        <span>AI 正在辨識圖片文字，請稍候...</span>
+                    </div>
+                </div>
+
+                <!-- Text Area -->
+                <div class="flex flex-col h-full">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">解析文本內容 (可手動修改)</label>
+                    <textarea id="source-text" class="w-full flex-grow border border-gray-300 rounded-lg p-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none h-64 shadow-sm" placeholder="上傳圖片後將自動帶入辨識結果，您也可以直接在此貼上欲出題的文章或重點整理..."></textarea>
+                </div>
+            </div>
+
+            <div class="mt-8 flex justify-end">
+                <button onclick="nextStep(2)" id="btn-next-1" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-6 rounded-lg shadow transition-colors flex items-center">
+                    下一步：設定題型 <i class="fas fa-arrow-right ml-2"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- ================= STEP 2: Parameters ================= -->
+        <div id="step2" class="hidden-step bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8">
+            <h2 class="text-2xl font-bold mb-2 flex items-center"><i class="fas fa-sliders-h text-blue-500 mr-3"></i>第二步：出題參數設定</h2>
+            <p class="text-gray-500 mb-6">請根據您的需求，設定題型、數量及難度分配。</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Options Form -->
+                <div class="space-y-6">
+                    <!-- Question Types -->
+                    <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                        <label class="block text-base font-semibold text-gray-800 mb-3"><i class="fas fa-list-ul mr-2 text-gray-500"></i>選擇題型 (可複選)</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input type="checkbox" value="單選題" class="q-type form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500" checked>
+                                <span class="text-gray-700">單選題</span>
+                            </label>
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input type="checkbox" value="是非題" class="q-type form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500" checked>
+                                <span class="text-gray-700">是非題</span>
+                            </label>
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input type="checkbox" value="填充題" class="q-type form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500">
+                                <span class="text-gray-700">填充題</span>
+                            </label>
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input type="checkbox" value="簡答題" class="q-type form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500">
+                                <span class="text-gray-700">簡答題</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Quantity -->
+                    <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                        <label class="block text-base font-semibold text-gray-800 mb-3"><i class="fas fa-hashtag mr-2 text-gray-500"></i>總題數</label>
+                        <div class="flex items-center">
+                            <input type="number" id="q-count" min="1" max="50" value="5" class="w-24 border border-gray-300 rounded-lg p-2 text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <span class="ml-3 text-gray-600">題 (建議 5-20 題，確保 AI 產出品質)</span>
+                        </div>
+                    </div>
+
+                    <!-- Difficulty -->
+                    <div class="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                        <label class="block text-base font-semibold text-gray-800 mb-3"><i class="fas fa-tachometer-alt mr-2 text-gray-500"></i>難度分配</label>
+                        <select id="q-difficulty" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="平均分配 (易30%、中40%、難30%)">平均分配 (易30%、中40%、難30%)</option>
+                            <option value="偏易 (易60%、中30%、難10%)">偏易 (基礎測驗適用)</option>
+                            <option value="偏難 (易10%、中30%、難60%)">偏難 (進階挑戰適用)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Info panel -->
+                <div class="bg-blue-50 rounded-lg p-6 border border-blue-100 flex flex-col justify-center">
+                    <div class="text-center mb-4">
+                        <div class="w-16 h-16 bg-blue-100 text-blue-500 rounded-full flex items-center justify-center text-2xl mx-auto mb-3">
+                            <i class="fas fa-magic"></i>
+                        </div>
+                        <h3 class="font-bold text-lg text-gray-800">AI 智能出題準備就緒</h3>
+                        <p class="text-sm text-gray-600 mt-2">系統將根據您在第一步提供的文本內容，結合上述設定參數，自動為您生成具備知識點與邏輯的考卷及詳解。</p>
+                    </div>
+                    
+                    <ul class="text-sm text-gray-600 space-y-2 mt-4 bg-white p-4 rounded-md border border-blue-50 shadow-sm">
+                        <li class="flex items-start"><i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i> 自動產生符合邏輯的誘答選項</li>
+                        <li class="flex items-start"><i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i> 附帶完整的解答與觀念解析</li>
+                        <li class="flex items-start"><i class="fas fa-check-circle text-green-500 mt-1 mr-2"></i> 支援一鍵匯出 Word 格式方便列印</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="mt-8 flex justify-between">
+                <button onclick="nextStep(1)" class="text-gray-600 hover:text-gray-900 font-medium py-2.5 px-6 rounded-lg hover:bg-gray-100 transition-colors">
+                    <i class="fas fa-arrow-left mr-2"></i> 返回上一步
+                </button>
+                <button onclick="generateExam()" id="btn-generate" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-8 rounded-lg shadow transition-colors flex items-center">
+                    <i class="fas fa-cogs mr-2"></i> 開始 AI 智能產題
+                </button>
+            </div>
+        </div>
+
+        <!-- ================= STEP 3: Results ================= -->
+        <div id="step3" class="hidden-step">
+            
+            <!-- Generation Loading state -->
+            <div id="generation-loading" class="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center hidden-step">
+                <div class="inline-block relative w-20 h-20">
+                    <div class="absolute top-0 left-0 w-full h-full border-4 border-gray-200 rounded-full"></div>
+                    <div class="absolute top-0 left-0 w-full h-full border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
+                    <i class="fas fa-robot absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-xl text-blue-600"></i>
+                </div>
+                <h3 class="text-xl font-bold mt-6 mb-2 text-gray-800">AI 正在努力撰寫題目...</h3>
+                <p class="text-gray-500">這可能需要 10~30 秒，請稍候。AI 正在為您設計精準的選項與詳解。</p>
+            </div>
+
+            <!-- Result Content -->
+            <div id="result-content" class="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col overflow-hidden hidden">
+                
+                <!-- Toolbar -->
+                <div class="bg-gray-50 border-b border-gray-200 p-4 flex flex-wrap justify-between items-center gap-4">
+                    <div class="flex bg-gray-200 p-1 rounded-lg">
+                        <button onclick="switchTab('student')" id="tab-student" class="px-6 py-2 rounded-md font-medium text-sm transition-colors bg-white shadow-sm text-blue-600">
+                            <i class="fas fa-user-graduate mr-2"></i>學生卷 (僅題目)
+                        </button>
+                        <button onclick="switchTab('teacher')" id="tab-teacher" class="px-6 py-2 rounded-md font-medium text-sm transition-colors text-gray-600 hover:text-gray-900">
+                            <i class="fas fa-chalkboard-teacher mr-2"></i>解答卷 (含詳解)
+                        </button>
+                    </div>
+                    
+                    <div class="flex space-x-3">
+                        <button onclick="nextStep(2)" class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg shadow-sm hover:bg-gray-50 text-sm font-medium transition-colors">
+                            <i class="fas fa-redo mr-2"></i>重新設定
+                        </button>
+                        <button onclick="exportWord()" class="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 text-sm font-medium transition-colors flex items-center">
+                            <i class="fas fa-file-word mr-2 text-lg"></i>下載 Word 檔
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Paper Preview Area -->
+                <div class="p-8 max-h-[600px] overflow-y-auto bg-gray-100">
+                    <div id="paper-container" class="bg-white p-10 shadow-lg mx-auto max-w-4xl min-h-[500px] paper-content" style="box-shadow: 0 0 15px rgba(0,0,0,0.05);">
+                        <!-- Title -->
+                        <div class="text-center mb-8 border-b-2 border-gray-800 pb-4">
+                            <h1 class="text-3xl font-bold text-gray-900 mb-2">自動生成測驗卷</h1>
+                            <p class="text-gray-600">班級：______ 姓名：______ 座號：______ 分數：______</p>
+                        </div>
+                        
+                        <!-- Questions will be injected here -->
+                        <div id="questions-render-area"></div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+
+    </main>
+
+    <!-- Hidden element for Word Export -->
+    <div id="export-container" style="display:none;"></div>
+
+    <script>
+        // API Configuration setup (Gemini implementation pattern)
+        const apiKey = ""; // System will inject this in Canvas environment
+        
+        // Global State
+        let currentStep = 1;
+        let examData = [];
+        let currentTab = 'student';
+
+        // Initialize drag and drop
+        const dropZone = document.getElementById('drop-zone');
+        const fileUpload = document.getElementById('file-upload');
+        const ocrLoading = document.getElementById('ocr-loading');
+        const sourceText = document.getElementById('source-text');
+
+        dropZone.addEventListener('click', () => fileUpload.click());
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-active');
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-active');
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-active');
+            if (e.dataTransfer.files.length) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileUpload.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        // Step Navigation
+        function nextStep(step) {
+            if (step === 2 && sourceText.value.trim() === '') {
+                alert('請上傳圖片或輸入文本內容！');
+                return;
+            }
+
+            // Hide all steps
+            document.getElementById('step1').classList.replace('active-step', 'hidden-step');
+            document.getElementById('step2').classList.replace('active-step', 'hidden-step');
+            document.getElementById('step3').classList.replace('active-step', 'hidden-step');
+
+            // Show target step
+            document.getElementById(`step${step}`).classList.replace('hidden-step', 'active-step');
+            currentStep = step;
+
+            // Update UI indicators
+            updateIndicators(step);
+        }
+
+        function updateIndicators(step) {
+            const colors = {
+                activeBg: 'bg-blue-600', activeText: 'text-white',
+                inactiveBg: 'bg-gray-200', inactiveText: 'text-gray-500',
+                lineActive: 'bg-blue-600', lineInactive: 'bg-gray-300'
+            };
+
+            for(let i=1; i<=3; i++) {
+                const ind = document.getElementById(`ind-step${i}`);
+                const circle = ind.querySelector('div');
+                const text = ind.querySelector('span');
+                const line = i < 3 ? document.getElementById(`line-${i}`) : null;
+
+                if (i <= step) {
+                    circle.className = `w-10 h-10 rounded-full flex items-center justify-center font-bold shadow-lg transition-colors duration-300 ${colors.activeBg} ${colors.activeText}`;
+                    text.className = `text-sm mt-2 font-medium text-blue-600`;
+                    if(line && i < step) line.className = `w-12 md:w-24 h-1 rounded transition-colors duration-300 ${colors.lineActive}`;
+                } else {
+                    circle.className = `w-10 h-10 rounded-full flex items-center justify-center font-bold transition-colors duration-300 ${colors.inactiveBg} ${colors.inactiveText}`;
+                    text.className = `text-sm mt-2 font-medium text-gray-500`;
+                    if(line) line.className = `w-12 md:w-24 h-1 rounded transition-colors duration-300 ${colors.lineInactive}`;
+                }
+            }
+        }
+
+        // File handling and simulated/actual OCR
+        async function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('目前僅支援圖片格式 (JPG/PNG)。若是文件，請直接複製文字並貼上至右側欄位。');
+                return;
+            }
+
+            ocrLoading.classList.remove('hidden');
+            
+            // Read as Base64
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const base64Data = e.target.result.split(',')[1];
+                
+                try {
+                    // Try to use Gemini Vision API if key is available
+                    if (apiKey) {
+                        const text = await extractTextWithGemini(file.type, base64Data);
+                        sourceText.value = text;
+                    } else {
+                        // Simulation for mockup
+                        setTimeout(() => {
+                            sourceText.value = "這是一段從圖片中辨識出來的模擬文本。\n\n台灣位於亞洲東部、太平洋西北側，為一個島嶼國家。氣候兼具熱帶與亞熱帶季風氣候特徵。由於位處歐亞板塊與菲律賓海板塊交界處，地震頻繁但也造就了豐富的高山地形。\n\n歷史上，台灣曾受荷蘭、西班牙、明鄭、清朝及日本統治，並於1945年後由中華民國接管。這使得台灣的文化呈現多元融合的特色，包含原住民文化、漢人文化及近代西方與日本文化的影響。";
+                        }, 2000);
+                    }
+                } catch (err) {
+                    console.error("OCR Error:", err);
+                    alert("圖片辨識失敗，請手動輸入文本。");
+                } finally {
+                    setTimeout(() => ocrLoading.classList.add('hidden'), apiKey ? 0 : 2000);
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // API Call helpers
+        async function fetchWithRetry(url, options, retries = 5) {
+            const delays = [1000, 2000, 4000, 8000, 16000];
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    return await response.json();
+                } catch (e) {
+                    if (i === retries - 1) throw e;
+                    await new Promise(r => setTimeout(r, delays[i]));
+                }
+            }
+        }
+
+        async function extractTextWithGemini(mimeType, base64Data) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{
+                    role: "user",
+                    parts: [
+                        { text: "請精準地將圖片中的文字提取出來，保留原本的段落結構，不需要額外的說明。" },
+                        { inlineData: { mimeType: mimeType, data: base64Data } }
+                    ]
+                }]
+            };
+
+            const data = await fetchWithRetry(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        }
+
+        // Generate Exam Logic
+        async function generateExam() {
+            // Get params
+            const types = Array.from(document.querySelectorAll('.q-type:checked')).map(cb => cb.value);
+            if (types.length === 0) {
+                alert("請至少選擇一種題型！");
+                return;
+            }
+            const count = document.getElementById('q-count').value;
+            const diff = document.getElementById('q-difficulty').value;
+            const text = sourceText.value;
+
+            // UI Transition
+            document.getElementById('step2').classList.replace('active-step', 'hidden-step');
+            document.getElementById('step3').classList.replace('hidden-step', 'active-step');
+            updateIndicators(3);
+            
+            document.getElementById('generation-loading').classList.replace('hidden-step', 'active-step');
+            document.getElementById('result-content').classList.add('hidden');
+
+            try {
+                if (apiKey) {
+                    examData = await callGeminiToGenerate(text, types, count, diff);
+                } else {
+                    // Simulation data
+                    await new Promise(r => setTimeout(r, 2500));
+                    examData = generateMockExamData(types, count);
+                }
+                
+                renderExam();
+                
+                document.getElementById('generation-loading').classList.replace('active-step', 'hidden-step');
+                document.getElementById('result-content').classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Generation failed:", error);
+                alert("題目生成失敗，請稍後再試或減少總題數。");
+                nextStep(2); // Go back to settings
+            }
+        }
+
+        async function callGeminiToGenerate(text, types, count, diff) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const prompt = `
+            身為一位專業的教育工作者，請根據以下提供的文本內容，生成一份測驗試卷。
+            【設定參數】
+            總題數：${count}題
+            題型包含：${types.join(', ')}
+            難度分配：${diff}
+            
+            【參考文本】
+            ${text}
+
+            【輸出要求】
+            請嚴格以 JSON Array 格式輸出，不要包含 Markdown 標記 (\`\`\`json 等) 或其他說明文字。格式如下：
+            [
+              {
+                "id": 1,
+                "type": "單選題", 
+                "question": "問題內容...",
+                "options": ["A. 選項1", "B. 選項2", "C. 選項3", "D. 選項4"], // 僅選擇題需要，其他題型為空陣列
+                "answer": "A", // 解答
+                "explanation": "解析內容..." // 說明為什麼選這個答案
+              }
+            ]
+            `;
+
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                }
+            };
+
+            const data = await fetchWithRetry(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            return JSON.parse(resultText);
+        }
+
+        function generateMockExamData(types, count) {
+            let mock = [];
+            for (let i = 1; i <= count; i++) {
+                const type = types[(i - 1) % types.length];
+                if (type === '單選題') {
+                    mock.push({
+                        id: i, type: "單選題", question: `關於台灣地理位置的敘述，下列何者正確？`,
+                        options: ["A. 位於大西洋", "B. 位於歐亞板塊與菲律賓海板塊交界處", "C. 氣候為寒帶氣候", "D. 沒有高山地形"],
+                        answer: "B", explanation: "根據文本，台灣位處歐亞板塊與菲律賓海板塊交界處，地震頻繁且造就豐富高山地形。"
+                    });
+                } else if (type === '是非題') {
+                    mock.push({
+                        id: i, type: "是非題", question: `台灣的文化特色為單一民族文化，沒有受到其他國家的影響。`,
+                        options: [], answer: "X (非)", explanation: "台灣文化呈現多元融合的特色，包含原住民、漢人、及西方與日本文化的影響。"
+                    });
+                } else if (type === '填充題') {
+                    mock.push({
+                        id: i, type: "填充題", question: `台灣歷史上曾受荷蘭、_______、明鄭、清朝及日本統治。`,
+                        options: [], answer: "西班牙", explanation: "文本提及：歷史上曾受荷蘭、西班牙、明鄭、清朝及日本統治。"
+                    });
+                } else {
+                    mock.push({
+                        id: i, type: "簡答題", question: `請簡述造就台灣豐富高山地形的主要原因。`,
+                        options: [], answer: "位於歐亞板塊與菲律賓海板塊交界處的板塊擠壓。", explanation: "板塊運動是造山運動的主因。"
+                    });
+                }
+            }
+            return mock;
+        }
+
+        // Render Exam Data
+        function switchTab(tab) {
+            currentTab = tab;
+            
+            // UI Button styling
+            if(tab === 'student') {
+                document.getElementById('tab-student').className = "px-6 py-2 rounded-md font-medium text-sm transition-colors bg-white shadow-sm text-blue-600";
+                document.getElementById('tab-teacher').className = "px-6 py-2 rounded-md font-medium text-sm transition-colors text-gray-600 hover:text-gray-900";
+            } else {
+                document.getElementById('tab-teacher').className = "px-6 py-2 rounded-md font-medium text-sm transition-colors bg-white shadow-sm text-blue-600";
+                document.getElementById('tab-student').className = "px-6 py-2 rounded-md font-medium text-sm transition-colors text-gray-600 hover:text-gray-900";
+            }
+            
+            renderExam();
+        }
+
+        function renderExam() {
+            const container = document.getElementById('questions-render-area');
+            container.innerHTML = '';
+            
+            // Group by type
+            const grouped = examData.reduce((acc, curr) => {
+                if(!acc[curr.type]) acc[curr.type] = [];
+                acc[curr.type].push(curr);
+                return acc;
+            }, {});
+
+            let indexCounter = 1;
+            const cnNumbers = ['一', '二', '三', '四', '五'];
+            let partIndex = 0;
+
+            for (const [type, questions] of Object.entries(grouped)) {
+                // Section Title
+                const sectionHtml = document.createElement('h3');
+                sectionHtml.textContent = `${cnNumbers[partIndex]}、${type} (共 ${questions.length} 題)`;
+                container.appendChild(sectionHtml);
+                partIndex++;
+
+                questions.forEach((q) => {
+                    const qDiv = document.createElement('div');
+                    qDiv.className = "mb-4";
+                    
+                    // Question text
+                    let qHtml = `<p><strong>${indexCounter}.</strong> ${q.question}</p>`;
+                    
+                    // Options (if any)
+                    if (q.options && q.options.length > 0) {
+                        qHtml += `<div class="options">`;
+                        q.options.forEach(opt => {
+                            qHtml += `<div class="mb-1">${opt}</div>`;
+                        });
+                        qHtml += `</div>`;
+                    }
+                    
+                    // Teacher view: Answer & Explanation
+                    if (currentTab === 'teacher') {
+                        qHtml += `
+                        <div class="answer-block">
+                            <div class="answer-text">解答：${q.answer}</div>
+                            <div class="explanation-text">解析：${q.explanation}</div>
+                        </div>`;
+                    } else if (q.type === '簡答題' || q.type === '填充題') {
+                        // Add spacing for student to write
+                        qHtml += `<div class="h-16"></div>`;
+                    }
+
+                    qDiv.innerHTML = qHtml;
+                    container.appendChild(qDiv);
+                    indexCounter++;
+                });
+            }
+        }
+
+        // Export to Word logic
+        function exportWord() {
+            // Re-render specifically for export to capture all teacher answers if needed
+            // Actually, we export exactly what is currently viewed (Student or Teacher)
+            const content = document.getElementById('paper-container').innerHTML;
+            
+            const header = `
+            <html xmlns:o='urn:schemas-microsoft-com:office:office' 
+                  xmlns:w='urn:schemas-microsoft-com:office:word' 
+                  xmlns='http://www.w3.org/TR/REC-html40'>
+            <head>
+                <meta charset='utf-8'>
+                <title>Export Doc</title>
+                <style>
+                    body { font-family: 'Microsoft JhengHei', sans-serif; line-height: 1.5; font-size: 12pt; padding: 20px;}
+                    h1 { text-align: center; font-size: 18pt; margin-bottom: 20px; border-bottom: 1px solid #000; padding-bottom: 10px; }
+                    h3 { font-size: 14pt; font-weight: bold; margin-top: 20px; }
+                    p { margin: 5px 0; }
+                    .options { margin-left: 20px; }
+                    .answer-block { background-color: #f0f0f0; border-left: 3px solid #333; padding: 10px; margin: 10px 0; }
+                    .answer-text { font-weight: bold; color: #b91c1c; }
+                    .explanation-text { color: #444; font-size: 11pt; }
+                </style>
+            </head><body>`;
+            
+            const footer = "</body></html>";
+            const sourceHTML = header + content + footer;
+            
+            // Clean up unneeded tailwind classes for pure word doc (optional, but helps)
+            const cleanHTML = sourceHTML.replace(/class="[^"]*"/g, '');
+
+            const source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
+            const fileDownload = document.createElement("a");
+            document.body.appendChild(fileDownload);
+            fileDownload.href = source;
+            fileDownload.download = `測驗卷_${currentTab === 'teacher' ? '解答版' : '學生版'}.doc`;
+            fileDownload.click();
+            document.body.removeChild(fileDownload);
+        }
+
+    </script>
+</body>
+</html>
