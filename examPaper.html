@@ -51,7 +51,7 @@
 
     <!-- Navbar -->
     <nav class="bg-blue-600 text-white shadow-md">
-        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+        <div class="max-w-[1600px] w-[95%] mx-auto px-4 py-3 flex justify-between items-center">
             <div class="flex items-center space-x-2">
                 <i class="fas fa-robot text-2xl"></i>
                 <span class="text-xl font-bold tracking-wider">AI 題目製造機</span>
@@ -63,7 +63,7 @@
     </nav>
 
     <!-- Main Content -->
-    <main class="flex-grow max-w-6xl mx-auto w-full px-4 py-8">
+    <main class="flex-grow max-w-[1600px] w-[95%] mx-auto px-4 md:px-8 py-8">
         
         <!-- Stepper -->
         <div class="mb-8">
@@ -96,7 +96,7 @@
                 <!-- Upload Area -->
                 <div class="flex flex-col h-full relative">
                     <label class="block text-sm font-medium text-gray-700 mb-2">1. 預覽畫面</label>
-                    <div id="drop-zone" class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 hover:bg-blue-50 transition-colors cursor-pointer flex flex-col items-center justify-center flex-grow relative overflow-hidden min-h-[16rem]">
+                    <div id="drop-zone" class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 hover:bg-blue-50 transition-colors cursor-pointer flex flex-col items-center justify-center flex-grow relative overflow-hidden min-h-[350px]">
                         <!-- Default state -->
                         <div id="drop-zone-content" class="w-full h-full flex flex-col items-center justify-center">
                             <i class="fas fa-file-image text-4xl text-gray-400 mb-4"></i>
@@ -125,7 +125,7 @@
                 <!-- 2. OCR Text Area -->
                 <div class="flex flex-col h-full relative">
                     <label class="block text-sm font-medium text-gray-700 mb-2">2. AI 辨識內容 (可手動微調)</label>
-                    <textarea id="ocr-text" class="w-full flex-grow border border-blue-200 bg-blue-50 rounded-lg p-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none h-64 shadow-sm" placeholder="圖片辨識的純文字將顯示於此，您可在此校對與修改。系統將依據此內容進行出題。"></textarea>
+                    <textarea id="ocr-text" class="w-full flex-grow border border-blue-200 bg-blue-50 rounded-lg p-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none min-h-[350px] shadow-sm" placeholder="圖片辨識的純文字將顯示於此，您可在此校對與修改。系統將依據此內容進行出題。"></textarea>
                     <button onclick="analyzeText()" class="absolute bottom-4 right-4 bg-white border border-blue-300 text-blue-600 px-3 py-1.5 rounded shadow-sm text-sm hover:bg-blue-50 transition-colors">
                         <i class="fas fa-magic mr-1"></i>重整解析
                     </button>
@@ -134,7 +134,7 @@
                 <!-- 3. Analyzed Text Area -->
                 <div class="flex flex-col h-full relative">
                     <label class="block text-sm font-medium text-gray-700 mb-2">3. 解析文本 (意涵重點，唯讀)</label>
-                    <textarea id="analyzed-text" readonly class="w-full flex-grow border border-gray-300 bg-gray-100 rounded-lg p-4 focus:outline-none resize-none h-64 shadow-sm text-gray-600" placeholder="AI 將自動在此產出文本意涵與重點解析..."></textarea>
+                    <textarea id="analyzed-text" readonly class="w-full flex-grow border border-gray-300 bg-gray-100 rounded-lg p-4 focus:outline-none resize-none min-h-[350px] shadow-sm text-gray-600" placeholder="AI 將自動在此產出文本意涵與重點解析..."></textarea>
                     
                     <!-- Loading overlay for analysis -->
                     <div id="analysis-loading" class="hidden absolute inset-0 bg-gray-100/90 flex items-center justify-center rounded-lg mt-7 z-10">
