@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>問題排除 SOP 互動系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #f3f4f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: "Microsoft JhengHei", sans-serif;
+        }
+        .container {
+            width: 100%;
+            max-width: 650px;
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        /* 上視窗：初始選擇 */
+        .setup-window {
+            background: #f8fafc;
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            text-align: center;
+        }
+        /* 中視窗：問題選擇 */
+        .problem-window {
+            background: #ffffff;
+            padding: 1.25rem;
+            border-bottom: 2px solid #e2e8f0;
+            text-align: center;
+        }
+        /* 下視窗：流程判斷 - 狀態區 */
+        .status-window {
+            background: #fef9c3; 
+            color: #dc2626;      
+            padding: 1.5rem;
+            text-align: center;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-bottom: 2px solid #fde047;
+        }
+        /* 下視窗：流程判斷 - 操作區 */
+        .decision-window {
+            padding: 1.5rem 2rem;
+            background: white;
+        }
+        .btn {
+            padding: 0.6rem 1.2rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .btn-yes { background-color: #10b981; color: white; width: 45%; }
+        .btn-no { background-color: #ef4444; color: white; width: 45%; }
+        .btn-start { background-color: #2563eb; color: white; font-size: 0.85rem; }
+        .btn-problem {
+            background-color: #f1f5f9;
+            color: #334155;
+            border: 1px solid #cbd5e1;
+            width: 100%;
+            text-align: left;
+            margin-bottom: 0.4rem;
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+        }
+        .btn-problem:hover { background-color: #e2e8f0; }
+        .btn-problem.active { background-color: #2563eb; color: white; border-color: #1d4ed8; }
+        
+        .btn-back {
+            background-color: #e5e7eb; color: #4b5563; width: 100%; margin-top: 1rem; font-size: 0.8rem;
+        }
+        .disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+        .hidden { display: none; }
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <!-- 1. 上視窗：初始選擇 -->
+        <div class="setup-window">
+            <h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">初始選擇</h2>
+            <div class="flex justify-center gap-6 mb-2">
+                <label class="flex items-center cursor-pointer text-sm">
+                    <input type="radio" name="topic" value="T1" class="mr-2" checked onchange="resetProblem()"> 第一題
+                </label>
+                <label class="flex items-center cursor-pointer text-sm">
+                    <input type="radio" name="topic" value="T2" class="mr-2" onchange="resetProblem()"> 第二題
+                </label>
+            </div>
+            <button onclick="confirmTopic()" class="btn btn-start">確認題目</button>
+        </div>
+
+        <!-- 2. 中視窗：問題選擇 -->
+        <div id="problem-window" class="problem-window disabled">
+            <h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">問題選擇</h2>
+            <div id="problem-list" class="grid grid-cols-1">
+                <!-- 由 JavaScript 動態生成 -->
+            </div>
+        </div>
+
+        <!-- 3. 下視窗：流程判斷 -->
+        <div id="sop-interface" class="disabled">
+            <div class="status-window">
+                <h2 class="text-sm font-bold opacity-70 mb-1">問題狀況 / 檢查動作</h2>
+                <div id="status-text" class="text-lg font-black whitespace-pre-line leading-relaxed">請先完成上方選擇</div>
+            </div>
+
+            <div class="decision-window">
+                <div id="question-area">
+                    <h2 class="text-sm font-bold text-gray-400 mb-2">改善判斷</h2>
+                    <p id="decision-text" class="text-center text-gray-500 text-lg mb-6 font-medium">等待中...</p>
+                    <div class="flex justify-between">
+                        <button onclick="handleChoice(true)" class="btn btn-yes">Yes</button>
+                        <button onclick="handleChoice(false)" class="btn btn-no">No</button>
+                    </div>
+                    <button id="back-btn" onclick="handleBack()" class="btn btn-back disabled">← 回上一流程</button>
+                </div>
+                
+                <div id="final-area" class="hidden text-center fade-in">
+                    <div id="final-icon" class="text-5xl mb-4"></div>
+                    <p id="final-title" class="text-2xl font-bold"></p>
+                    <p id="final-desc" class="text-gray-500 mt-2 whitespace-pre-line"></p>
+                    <button onclick="resetToProblems()" class="btn btn-back">重新選擇問題</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const problemDefinitions = {
+        'T1': [
+            { id: 'Q1', text: 'Q1. 顯示器全部不亮' },
+            { id: 'Q2', text: 'Q2. 所有 seg 的特定一節 LED 不亮' },
+            { id: 'Q3', text: 'Q3. 某一位 seg 所有 LED 都不亮' },
+            { id: 'Q4', text: 'Q4. 搞不清楚狀況' }
+        ],
+        'T2': [
+            { id: 'Q1', text: 'Q1. 顯示器全部不亮' },
+            { id: 'Q2', text: 'Q2. seg 特定一節 LED 不亮' },
+            { id: 'Q3', text: 'Q3. Keypad 僅特定一直行輸入有問題' },
+            { id: 'Q4', text: 'Q4. Keypad 僅特定一橫排輸入有問題' },
+            { id: 'Q5', text: 'Q5. 搞不清楚狀況' }
+        ]
+    };
+
+    const flows = {
+        'T1': {
+            'Q1': 'start_node',
+            'Q2': 'check_seg_line',
+            'Q3': 'check_digit_line',
+            'Q4': 'start_node',
+            'nodes': {
+                'start_node': {
+                    status: 'Q. 顯示器全部不亮',
+                    decision: '子板 LED 是否會亮？',
+                    yes: 'check_ground_line',
+                    no: 'check_power_cables'
+                },
+                'check_power_cables': {
+                    status: 'C. 檢查「電源線、子板、Seg、Keypad」是否插妥？',
+                    decision: '問題是否排除？',
+                    yes: 'success',
+                    no: 'start_node'
+                },
+                'check_ground_line': {
+                    status: 'C. 檢查四顆電晶體的共同接地線路，是否正常？',
+                    decision: '問題是否排除？',
+                    yes: 'success',
+                    no: 'check_code'
+                },
+                'check_code': {
+                    status: 'C. 檢查程式碼是否正確？',
+                    decision: '是否還有其他問題？',
+                    yes: 'select_new_problem',
+                    no: 'success'
+                },
+                'check_seg_line': {
+                    status: 'Q. 所有 seg 的特定一節 LED 不亮\nC. 檢測該條線路，是否正常？',
+                    decision: '是否還有其他問題？',
+                    yes: 'select_new_problem',
+                    no: 'success'
+                },
+                'check_digit_line': {
+                    status: 'Q. 某一位 seg 所有 LED 都不亮\nC. 檢測該位的電晶體線路，是否正常？',
+                    decision: '是否還有其他問題？',
+                    yes: 'success',
+                    no: 'fail' 
+                },
+                'select_new_problem': {
+                    status: '目前問題已部分處理',
+                    decision: '請重新選擇問題',
+                    yes: 'success', // 此處特殊處理，實際在 code 中導回選擇區
+                    no: 'success'
+                }
+            }
+        },
+        'T2': {
+            'Q1': 'start_node',
+            'Q2': 'check_seg_line',
+            'Q3': 'check_keypad_col',
+            'Q4': 'check_keypad_row',
+            'Q5': 'start_node',
+            'nodes': {
+                'start_node': {
+                    status: 'Q. 顯示器全部不亮',
+                    decision: '子板 LED 是否會亮？',
+                    yes: 'check_code',
+                    no: 'check_power_cables'
+                },
+                'check_power_cables': {
+                    status: 'C. 檢查「電源線、子板、Seg、Keypad」是否插妥？',
+                    decision: '問題是否排除？',
+                    yes: 'success',
+                    no: 'check_code' // 符合 image_be1635.png 紅色箭頭
+                },
+                'check_code': {
+                    status: 'C. 檢查程式碼是否正確？',
+                    decision: '是否還有其他問題？',
+                    yes: 'select_new_problem',
+                    no: 'success'
+                },
+                'check_seg_line': {
+                    status: 'Q. seg 特定一節 LED 不亮\nC. 檢測該條線路，是否正常？',
+                    decision: '是否還有其他問題？',
+                    yes: 'select_new_problem',
+                    no: 'success'
+                },
+                'check_keypad_col': {
+                    status: 'Q. Keypad 僅特定一直行輸入有問題\nC. 檢測該條 C 線路，是否正常？',
+                    decision: '是否還有其他問題？',
+                    yes: 'select_new_problem',
+                    no: 'success'
+                },
+                'check_keypad_row': {
+                    status: 'Q. Keypad 僅特定一橫排輸入有問題\nC. 檢測該條 R 線路，是否正常？',
+                    decision: '是否還有其他問題？',
+                    yes: 'success',
+                    no: 'fail' 
+                },
+                'select_new_problem': {
+                    status: '目前問題已部分處理',
+                    decision: '請重新選擇問題',
+                    yes: 'success',
+                    no: 'success'
+                }
+            }
+        }
+    };
+
+    let currentTopic = 'T1';
+    let currentState = null;
+    let history = [];
+
+    const problemWin = document.getElementById('problem-window');
+    const problemList = document.getElementById('problem-list');
+    const sopWin = document.getElementById('sop-interface');
+    const statusEl = document.getElementById('status-text');
+    const decisionEl = document.getElementById('decision-text');
+    const questionArea = document.getElementById('question-area');
+    const finalArea = document.getElementById('final-area');
+    const backBtn = document.getElementById('back-btn');
+
+    function resetProblem() {
+        problemWin.classList.add('disabled');
+        sopWin.classList.add('disabled');
+        problemList.innerHTML = '';
+        statusEl.innerText = "請點擊確認題目";
+        decisionEl.innerText = "等待中...";
+        questionArea.classList.remove('hidden');
+        finalArea.classList.add('hidden');
+    }
+
+    function confirmTopic() {
+        currentTopic = document.querySelector('input[name="topic"]:checked').value;
+        problemWin.classList.remove('disabled');
+        
+        problemList.innerHTML = '';
+        problemDefinitions[currentTopic].forEach(p => {
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-problem';
+            btn.id = `btn-${p.id}`;
+            btn.innerText = p.text;
+            btn.onclick = () => selectProblem(p.id);
+            problemList.appendChild(btn);
+        });
+        
+        statusEl.innerText = "請選擇問題狀況";
+    }
+
+    function selectProblem(qId) {
+        document.querySelectorAll('.btn-problem').forEach(b => b.classList.remove('active'));
+        document.getElementById(`btn-${qId}`).classList.add('active');
+        
+        sopWin.classList.remove('disabled');
+        currentState = flows[currentTopic][qId];
+        history = [];
+        updateUI();
+    }
+
+    function updateUI() {
+        if (history.length > 0) backBtn.classList.remove('disabled');
+        else backBtn.classList.add('disabled');
+
+        if (currentState === 'success') {
+            showEnd('🎉', '恭喜你！', '問題已成功排除。', 'text-green-600');
+            return;
+        }
+        if (currentState === 'fail') {
+            showEnd('🆘', '您已經病入膏肓', '請 callout 求救！', 'text-red-600');
+            return;
+        }
+        if (currentState === 'select_new_problem') {
+            showEnd('🔍', '請重新選擇問題', '上個步驟已處理完畢，還有其他問題嗎？', 'text-blue-600');
+            return;
+        }
+
+        const node = flows[currentTopic].nodes[currentState];
+        statusEl.innerText = node.status;
+        decisionEl.innerText = node.decision;
+        
+        questionArea.classList.remove('hidden');
+        finalArea.classList.add('hidden');
+    }
+
+    function handleChoice(isYes) {
+        history.push(currentState);
+        const node = flows[currentTopic].nodes[currentState];
+        currentState = isYes ? node.yes : node.no;
+        updateUI();
+    }
+
+    function handleBack() {
+        if (history.length > 0) {
+            currentState = history.pop();
+            updateUI();
+        }
+    }
+
+    function resetToProblems() {
+        sopWin.classList.add('disabled');
+        document.querySelectorAll('.btn-problem').forEach(b => b.classList.remove('active'));
+        statusEl.innerText = "請選擇問題狀況";
+        questionArea.classList.remove('hidden');
+        finalArea.classList.add('hidden');
+    }
+
+    function showEnd(icon, title, desc, color) {
+        questionArea.classList.add('hidden');
+        finalArea.classList.remove('hidden');
+        statusEl.innerText = '流程結束';
+        document.getElementById('final-icon').innerText = icon;
+        document.getElementById('final-title').innerText = title;
+        document.getElementById('final-title').className = `text-2xl font-bold ${color}`;
+        document.getElementById('final-desc').innerText = desc;
+    }
+</script>
+
+</body>
+</html>
