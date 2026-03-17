@@ -1,4 +1,4 @@
-<!DOCTYPE html> <!-- Teachable Machine 版 需自行訓練辨識模型 -->
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
@@ -23,75 +23,76 @@
     </div>
 
     <script type="text/javascript">
-        // ==========================================
-        // 注意：這裡必須替換成您在 Teachable Machine 訓練後匯出的 URL
-        // ==========================================
+        // 注意：請確保網址結尾有斜線 /
         const URL = "https://teachablemachine.withgoogle.com/models/jlbYYHHZ9/";
 
         let model, webcam, labelContainer, maxPredictions;
 
         async function init() {
-            // 【新增】檢查網址是否已經替換
-            if (URL.includes("YOUR_MODEL_ID")) {
-                alert("錯誤：請先將程式碼中的 URL 替換為您在 Teachable Machine 訓練後匯出的專屬網址！");
-                return;
-            }
-
             try {
-                const modelURL = URL + "model.json";
-                const metadataURL = URL + "metadata.json";
+                // 檢查網址合法性
+                if (!URL || URL.includes("YOUR_MODEL_ID")) {
+                    alert("請在程式碼中填入正確的模型 URL");
+                    return;
+                }
 
-                // 1. 載入模型 (這會消耗較多網路頻寬)
+                // 修正網址拼接，確保載入正確
+                const baseUrl = URL.endsWith('/') ? URL : URL + '/';
+                const modelURL = baseUrl + "model.json";
+                const metadataURL = baseUrl + "metadata.json";
+
                 document.getElementById('label-container').innerHTML = "正在下載模型... (請稍候)";
+                
+                // 載入模型
                 model = await tmImage.load(modelURL, metadataURL);
                 maxPredictions = model.getTotalClasses();
 
-                // 2. 設定相機 (這裡 TM 預設使用 200x200 的正方形畫布)
+                // 設定相機
                 const flip = true; 
                 webcam = new tmImage.Webcam(300, 300, flip); 
-                await webcam.setup({ facingMode: "user" }); // 請求相機權限
+                
+                // 嘗試啟動相機
+                await webcam.setup({ facingMode: "user" }); 
                 await webcam.play();
                 window.requestAnimationFrame(loop);
 
-                // 3. 顯示相機畫面
-                document.getElementById("webcam-container").innerHTML = ""; // 清空容器避免重複加入
+                // 更新介面
+                document.getElementById("webcam-container").innerHTML = "";
                 document.getElementById("webcam-container").appendChild(webcam.canvas);
                 
                 labelContainer = document.getElementById("label-container");
-                labelContainer.innerHTML = ""; // 清空提示文字
+                labelContainer.innerHTML = "";
                 for (let i = 0; i < maxPredictions; i++) {
                     labelContainer.appendChild(document.createElement("div"));
                 }
             } catch (error) {
-                // 【新增】捕捉錯誤並顯示給使用者看
-                console.error(error);
-                alert("發生錯誤！\n1. 請確認是否允許了相機權限。\n2. 請確認模型網址是否正確。\n錯誤詳細: " + error.message);
-                document.getElementById('label-container').innerHTML = "載入失敗，請重新整理頁面再試一次。";
+                console.error("Initialization Error:", error);
+                // 顯示更具體的錯誤原因
+                let errorMsg = error.message || "未知錯誤 (可能是網路中斷或相機被佔用)";
+                alert("發生錯誤！\n1. 請確認 GitHub Pages 是否已開啟 HTTPS。\n2. 請確認是否允許了相機權限。\n3. 檢查模型網址是否為有效連結。\n\n詳細錯誤: " + errorMsg);
+                document.getElementById('label-container').innerHTML = "載入失敗：" + errorMsg;
             }
         }
 
         async function loop() {
-            webcam.update(); // 更新畫格
-            await predict(); // 進行影像分類預測
+            webcam.update();
+            await predict();
             window.requestAnimationFrame(loop);
         }
 
-        // 核心邏輯：把整張圖丟給模型算機率
         async function predict() {
-            // predict() 會對傳入的影像進行卷積運算，消耗 CPU/GPU 資源
+            if (!model || !webcam) return;
             const prediction = await model.predict(webcam.canvas);
             
             for (let i = 0; i < maxPredictions; i++) {
-                // 將機率 (0~1) 轉為百分比顯示
                 const classPrediction =
                     prediction[i].className + ": " + (prediction[i].probability * 100).toFixed(1) + "%";
                 labelContainer.childNodes[i].innerHTML = classPrediction;
                 
-                // 視覺化：如果機率大於 80%，讓它變色
                 if(prediction[i].probability > 0.8) {
-                    labelContainer.childNodes[i].classList.add("text-blue-600");
+                    labelContainer.childNodes[i].className = "text-blue-600 font-extrabold scale-110 transition-transform";
                 } else {
-                    labelContainer.childNodes[i].classList.remove("text-blue-600");
+                    labelContainer.childNodes[i].className = "text-gray-500 font-normal scale-100";
                 }
             }
         }
