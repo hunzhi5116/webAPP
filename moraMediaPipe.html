@@ -152,10 +152,14 @@
                 enableWebcamButton.classList.replace("bg-red-600", "bg-blue-600");
                 enableWebcamButton.classList.replace("hover:bg-red-500", "hover:bg-blue-500");
                 
+                // 徹底關閉相機串流 (強化資源釋放)
                 const stream = video.srcObject;
                 if(stream) {
                     const tracks = stream.getTracks();
-                    tracks.forEach(track => track.stop());
+                    tracks.forEach(track => {
+                        track.stop();
+                        stream.removeTrack(track); 
+                    });
                 }
                 video.srcObject = null;
                 gestureOutput.innerHTML = "❓";
@@ -183,8 +187,27 @@
                     video.srcObject = stream;
                     video.addEventListener("loadeddata", predictWebcam);
                 }).catch((err) => {
-                    console.error(err);
-                    statusText.innerHTML = "❌ 無法存取相機，請允許權限";
+                    console.error("Camera Error:", err);
+                    
+                    let errorMsg = "❌ 無法存取相機，請允許權限";
+                    let detailMsg = "請解除相機封鎖並重試";
+                    
+                    // 智慧偵測錯誤類型並給予明確提示
+                    const ua = navigator.userAgent || navigator.vendor || window.opera;
+                    if (ua.includes("Line") || ua.includes("FBAV") || ua.includes("Instagram")) {
+                        errorMsg = "❌ 內建瀏覽器不支援";
+                        detailMsg = "請點選單「以 Chrome/Safari 開啟」";
+                        alert("通訊軟體 (LINE/FB/IG) 的內建瀏覽器會封鎖相機！\n\n👉 請點擊畫面上方或下方的選單 (⋮ 或 ⋯)，選擇「以預設瀏覽器開啟」(Chrome / Safari)。");
+                    } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+                        errorMsg = "❌ 相機被佔用";
+                        detailMsg = "請完全關閉瀏覽器後重試";
+                        alert("您的相機目前正被其他網頁或 APP 佔用中（或是上次未正常關閉）！\n\n👉 請將手機背景的所有瀏覽器分頁「往上滑掉完全關閉」，然後再重新打開網址。");
+                    } else if (err.name === "NotAllowedError") {
+                        errorMsg = "❌ 權限遭拒絕";
+                        detailMsg = "請至瀏覽器設定開啟相機權限";
+                    }
+
+                    statusText.innerHTML = errorMsg;
                     statusText.classList.replace("text-green-400", "text-red-500");
                     
                     // 發生錯誤時，將按鈕與狀態恢復到「未開啟」的狀態
@@ -193,13 +216,25 @@
                     enableWebcamButton.classList.replace("bg-red-600", "bg-blue-600");
                     enableWebcamButton.classList.replace("hover:bg-red-500", "hover:bg-blue-500");
                     playGameBtn.classList.add("hidden");
-                    gameMessageEl.innerHTML = "請解除相機封鎖並重試";
+                    gameMessageEl.innerHTML = detailMsg;
                     gameMessageEl.className = "text-base font-black text-red-400 h-6 text-center flex-1 mx-2 truncate leading-6 mt-2";
                     gestureOutput.innerHTML = "❓";
                     gestureOutput.className = "text-5xl drop-shadow-md grayscale opacity-50 h-14 flex items-center justify-center animate-none";
                 });
             }
         }
+
+        // 當網頁關閉、重整或切換 APP 時，確保相機硬體被徹底釋放
+        window.addEventListener('beforeunload', () => {
+            if (video && video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+            }
+        });
+        window.addEventListener('pagehide', () => {
+            if (video && video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+            }
+        });
 
         // 步驟 4：持續預測影像幀
         async function predictWebcam() {
