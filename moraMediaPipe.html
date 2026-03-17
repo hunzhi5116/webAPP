@@ -14,49 +14,52 @@
         }
     </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-center p-4">
+<body class="bg-gray-900 text-white h-[100dvh] overflow-hidden flex flex-col items-center justify-start p-3">
 
-    <div class="w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl p-6 flex flex-col items-center">
-        <!-- 標題與狀態 -->
-        <h1 class="text-2xl font-black mb-2 tracking-wider text-blue-400">猜拳手勢辨識</h1>
-        <div id="status" class="text-sm mb-4 text-yellow-400 bg-gray-700 px-3 py-1 rounded-full">
-            ⏳ 正在載入 AI 模型，請稍候...
+    <div class="w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl p-4 flex flex-col h-full">
+        <!-- 頂部：標題與狀態 -->
+        <div class="flex justify-between items-center mb-3 shrink-0">
+            <h1 class="text-xl font-black tracking-wider text-blue-400">猜拳遊戲</h1>
+            <div id="status" class="text-xs font-bold text-yellow-400 bg-gray-700 px-2 py-1 rounded-md">
+                ⏳ 載入中...
+            </div>
         </div>
 
-        <!-- 遊戲計分板 -->
-        <div class="flex justify-between w-full px-4 mb-4 text-lg font-bold">
-            <div class="text-blue-400">玩家: <span id="player_score">0</span></div>
-            <div class="text-red-400">電腦: <span id="comp_score">0</span></div>
+        <!-- 戰況區 (分數與對決) -->
+        <div class="bg-gray-900 rounded-xl p-3 mb-3 border border-gray-700 shadow-inner shrink-0">
+            <!-- 分數與訊息 -->
+            <div class="flex justify-between items-end w-full mb-2">
+                <div class="text-xs text-blue-400 font-bold flex flex-col items-center w-1/4">玩家 <span id="player_score" class="text-2xl text-white">0</span></div>
+                <div id="game_message" class="text-base font-black text-white h-6 animate-pulse text-center flex-1 mx-2 truncate leading-6 mt-2">請開啟相機</div>
+                <div class="text-xs text-red-400 font-bold flex flex-col items-center w-1/4">電腦 <span id="comp_score" class="text-2xl text-white">0</span></div>
+            </div>
+            
+            <!-- 雙方出拳顯示 -->
+            <div class="flex items-center justify-around w-full mt-2">
+                <div class="flex flex-col items-center w-1/3">
+                    <div id="gesture_output" class="text-5xl drop-shadow-md transition-all h-14 flex items-center justify-center">❓</div>
+                    <span class="text-[10px] text-gray-500 mt-1">你的手勢</span>
+                </div>
+                <div class="text-xl font-black text-gray-600 italic">VS</div>
+                <div class="flex flex-col items-center w-1/3">
+                    <div id="comp_choice" class="text-5xl drop-shadow-md transition-all h-14 flex items-center justify-center">🤖</div>
+                    <span class="text-[10px] text-gray-500 mt-1">電腦出拳</span>
+                </div>
+            </div>
         </div>
 
-        <!-- 電腦出拳區 -->
-        <div class="flex flex-col items-center mb-4">
-            <span class="text-sm text-gray-400 mb-1">電腦出拳</span>
-            <div id="comp_choice" class="text-5xl bg-gray-700 w-24 h-24 flex items-center justify-center rounded-full shadow-inner border-2 border-gray-600 transition-all">🤖</div>
-        </div>
-
-        <!-- 遊戲結果訊息 -->
-        <div id="game_message" class="text-2xl font-black text-white mb-4 h-8 animate-pulse drop-shadow-md">請先開啟相機！</div>
-
-        <!-- 辨識結果顯示區 -->
-        <div class="h-20 flex items-center justify-center w-full bg-gray-900 rounded-xl mb-6 shadow-inner border border-gray-700">
-            <span id="gesture_output" class="text-xl text-gray-500 font-bold">等待相機開啟...</span>
-        </div>
-
-        <!-- 影像與畫布容器 -->
-        <div class="relative w-full bg-black rounded-xl overflow-hidden border-2 border-gray-700 shadow-lg" style="aspect-ratio: 3/4;">
-            <!-- video 設定 playsinline 確保在 iOS 不會自動全螢幕 -->
-            <video id="webcam" class="absolute top-0 left-0 w-full h-full object-cover mirror-view" autoplay playsinline></video>
-            <!-- canvas 用來繪製手部骨架 -->
-            <canvas id="output_canvas" class="absolute top-0 left-0 w-full h-full object-cover mirror-view"></canvas>
+        <!-- 影像與畫布容器 (彈性填滿剩餘空間) -->
+        <div class="relative w-full flex-1 bg-black rounded-xl overflow-hidden border-2 border-gray-700 shadow-lg min-h-0">
+            <video id="webcam" class="absolute inset-0 w-full h-full object-cover mirror-view" autoplay playsinline></video>
+            <canvas id="output_canvas" class="absolute inset-0 w-full h-full object-cover mirror-view"></canvas>
         </div>
 
         <!-- 控制按鈕 -->
-        <div class="w-full flex gap-3 mt-6">
-            <button id="enable_webcam" class="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold py-3 px-4 rounded-full w-full transition-colors duration-300 hidden shadow-lg shadow-blue-500/30">
+        <div class="w-full flex gap-3 mt-3 h-14 shrink-0">
+            <button id="enable_webcam" class="flex-1 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold rounded-xl transition-colors duration-300 hidden shadow-lg text-sm">
                 📷 開啟相機
             </button>
-            <button id="play_game_btn" class="bg-green-600 hover:bg-green-500 active:bg-green-700 text-white font-bold py-3 px-4 rounded-full w-full transition-colors duration-300 hidden shadow-lg shadow-green-500/30">
+            <button id="play_game_btn" class="flex-1 bg-green-600 hover:bg-green-500 active:bg-green-700 text-white font-bold rounded-xl transition-colors duration-300 hidden shadow-lg text-sm">
                 🎮 開始猜拳
             </button>
         </div>
@@ -155,22 +158,23 @@
                     tracks.forEach(track => track.stop());
                 }
                 video.srcObject = null;
-                gestureOutput.innerHTML = "相機已暫停";
-                gestureOutput.className = "text-xl text-gray-500 font-bold";
+                gestureOutput.innerHTML = "❓";
+                gestureOutput.className = "text-5xl drop-shadow-md grayscale opacity-50 h-14 flex items-center justify-center";
                 canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
                 playGameBtn.classList.add("hidden");
-                gameMessageEl.innerHTML = "請先開啟相機！";
-                gameMessageEl.className = "text-2xl font-black text-gray-400 mb-4 h-8";
+                gameMessageEl.innerHTML = "請開啟相機";
+                gameMessageEl.className = "text-base font-black text-gray-400 h-6 text-center flex-1 mx-2 truncate leading-6 mt-2";
             } else {
                 // 啟動相機
                 webcamRunning = true;
                 enableWebcamButton.innerHTML = "🛑 暫停相機";
                 enableWebcamButton.classList.replace("bg-blue-600", "bg-red-600");
                 enableWebcamButton.classList.replace("hover:bg-blue-500", "hover:bg-red-500");
-                gestureOutput.innerHTML = "請將手舉到鏡頭前...";
+                gestureOutput.innerHTML = "🖐️";
+                gestureOutput.className = "text-5xl drop-shadow-md grayscale opacity-50 h-14 flex items-center justify-center animate-pulse";
                 playGameBtn.classList.remove("hidden");
                 gameMessageEl.innerHTML = "準備好就按開始！";
-                gameMessageEl.className = "text-2xl font-black text-white mb-4 h-8 animate-pulse drop-shadow-md";
+                gameMessageEl.className = "text-base font-black text-white h-6 animate-pulse text-center flex-1 mx-2 truncate leading-6 mt-2";
 
                 // 強制要求使用前置鏡頭 (facingMode: "user")
                 const constraints = { video: { facingMode: "user" } };
@@ -230,26 +234,26 @@
                     
                     if (categoryName === "Closed_Fist") {
                         currentDetectedGesture = "Closed_Fist";
-                        gestureOutput.innerHTML = "石頭 ✊";
-                        gestureOutput.className = "text-5xl font-black text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.8)] transition-all scale-110";
+                        gestureOutput.innerHTML = "✊";
+                        gestureOutput.className = "text-5xl drop-shadow-[0_0_10px_rgba(250,204,21,0.8)] transition-all scale-110 h-14 flex items-center justify-center";
                     } else if (categoryName === "Open_Palm") {
                         currentDetectedGesture = "Open_Palm";
-                        gestureOutput.innerHTML = "布 🖐️";
-                        gestureOutput.className = "text-5xl font-black text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.8)] transition-all scale-110";
+                        gestureOutput.innerHTML = "🖐️";
+                        gestureOutput.className = "text-5xl drop-shadow-[0_0_10px_rgba(96,165,250,0.8)] transition-all scale-110 h-14 flex items-center justify-center";
                     } else if (categoryName === "Victory") {
                         currentDetectedGesture = "Victory";
-                        gestureOutput.innerHTML = "剪刀 ✌️";
-                        gestureOutput.className = "text-5xl font-black text-pink-400 drop-shadow-[0_0_10px_rgba(244,114,182,0.8)] transition-all scale-110";
+                        gestureOutput.innerHTML = "✌️";
+                        gestureOutput.className = "text-5xl drop-shadow-[0_0_10px_rgba(244,114,182,0.8)] transition-all scale-110 h-14 flex items-center justify-center";
                     } else {
                         // 偵測到手，但不是猜拳手勢
                         currentDetectedGesture = null;
-                        gestureOutput.innerHTML = "辨識中...";
-                        gestureOutput.className = "text-xl text-gray-400 font-bold transition-none scale-100";
+                        gestureOutput.innerHTML = "❓";
+                        gestureOutput.className = "text-5xl drop-shadow-md grayscale opacity-50 transition-none scale-100 h-14 flex items-center justify-center";
                     }
                 } else {
                     currentDetectedGesture = null;
-                    gestureOutput.innerHTML = "請將手舉到鏡頭前...";
-                    gestureOutput.className = "text-xl text-gray-500 font-bold transition-none scale-100";
+                    gestureOutput.innerHTML = "❓";
+                    gestureOutput.className = "text-5xl drop-shadow-md grayscale opacity-50 transition-none scale-100 h-14 flex items-center justify-center";
                 }
                 canvasCtx.restore();
             }
@@ -272,7 +276,7 @@
             compChoiceEl.innerHTML = "🤔";
             compChoiceEl.classList.add("animate-bounce");
             gameMessageEl.innerHTML = `倒數... ${count}`;
-            gameMessageEl.className = "text-3xl font-black text-yellow-400 mb-4 h-8 drop-shadow-[0_0_10px_rgba(250,204,21,0.8)]";
+            gameMessageEl.className = "text-xl font-black text-yellow-400 h-6 drop-shadow-[0_0_10px_rgba(250,204,21,0.8)] text-center flex-1 mx-2 truncate leading-6 mt-2";
 
             const countdownInterval = setInterval(() => {
                 count--;
@@ -292,8 +296,8 @@
             compChoiceEl.classList.remove("animate-bounce");
             
             if (!currentDetectedGesture) {
-                gameMessageEl.innerHTML = "❌ 沒看到手勢！重來";
-                gameMessageEl.className = "text-2xl font-black text-red-500 mb-4 h-8";
+                gameMessageEl.innerHTML = "❌ 沒看到手勢！";
+                gameMessageEl.className = "text-base font-black text-red-500 h-6 text-center flex-1 mx-2 truncate leading-6 mt-2";
                 compChoiceEl.innerHTML = "🤖";
                 return;
             }
@@ -309,19 +313,19 @@
             // 判斷勝負
             if (currentDetectedGesture === compChoice) {
                 gameMessageEl.innerHTML = "🤝 平手！";
-                gameMessageEl.className = "text-2xl font-black text-gray-300 mb-4 h-8 drop-shadow-md scale-110 transition-transform";
+                gameMessageEl.className = "text-lg font-black text-gray-300 h-6 drop-shadow-md scale-110 transition-transform text-center flex-1 mx-2 truncate leading-6 mt-2";
             } else if (
                 (currentDetectedGesture === "Closed_Fist" && compChoice === "Victory") ||
                 (currentDetectedGesture === "Open_Palm" && compChoice === "Closed_Fist") ||
                 (currentDetectedGesture === "Victory" && compChoice === "Open_Palm")
             ) {
                 gameMessageEl.innerHTML = "🎉 你贏了！";
-                gameMessageEl.className = "text-2xl font-black text-green-400 mb-4 h-8 drop-shadow-[0_0_10px_rgba(74,222,128,0.8)] scale-110 transition-transform";
+                gameMessageEl.className = "text-lg font-black text-green-400 h-6 drop-shadow-[0_0_10px_rgba(74,222,128,0.8)] scale-110 transition-transform text-center flex-1 mx-2 truncate leading-6 mt-2";
                 playerScore++;
                 playerScoreEl.innerText = playerScore;
             } else {
                 gameMessageEl.innerHTML = "😭 你輸了！";
-                gameMessageEl.className = "text-2xl font-black text-red-400 mb-4 h-8 drop-shadow-[0_0_10px_rgba(248,113,113,0.8)] scale-110 transition-transform";
+                gameMessageEl.className = "text-lg font-black text-red-400 h-6 drop-shadow-[0_0_10px_rgba(248,113,113,0.8)] scale-110 transition-transform text-center flex-1 mx-2 truncate leading-6 mt-2";
                 compScore++;
                 compScoreEl.innerText = compScore;
             }
