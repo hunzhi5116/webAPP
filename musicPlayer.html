@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>私人音樂盒 (離線增強版)</title>
+    <title>私人音樂盒 (斷點續聽版)</title>
     
     <!-- PWA 離線支援與圖示設定 -->
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3844/3844720.png">
@@ -36,6 +36,7 @@
             max-width: 400px;
             padding: 2rem;
             box-shadow: 0 0 20px rgba(168, 85, 247, 0.2);
+            position: relative;
         }
         .flex { display: flex; }
         .justify-between { justify-content: space-between; }
@@ -70,7 +71,6 @@
         .animate-spin { animation: spin 4s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-        /* 進度條樣式優化 */
         input[type="range"] {
             width: 100%;
             height: 6px;
@@ -87,14 +87,12 @@
             height: 16px; width: 16px;
             border-radius: 50%;
             background: #a855f7;
-            box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
         }
 
         .controls button {
             background: none; border: none; color: #94a3b8; cursor: pointer;
             padding: 0.5rem; transition: 0.2s;
         }
-        .controls button:active { transform: scale(0.9); }
         
         .play-btn {
             background: #a855f7 !important;
@@ -116,6 +114,14 @@
         }
         #playlist li.active { color: #a855f7; background: rgba(168, 85, 247, 0.15); font-weight: bold; }
 
+        /* 斷點提示 UI */
+        #resumeToast {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: #a855f7; color: white; padding: 10px 20px;
+            border-radius: 50px; font-size: 12px; display: none; z-index: 100;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3); white-space: nowrap;
+        }
+
         .timer-panel {
             background: rgba(0,0,0,0.3); border-radius: 1rem; padding: 1rem; margin-bottom: 1rem;
             display: none; border: 1px solid rgba(255,255,255,0.05);
@@ -129,6 +135,8 @@
 <body>
 
     <div class="glass-card">
+        <div id="resumeToast">偵測到紀錄，已為您接續播放</div>
+
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-purple-400 font-bold" style="margin:0; font-size: 1.4rem;">私人音樂盒</h2>
             <button id="timerBtn" style="background:none; border:none; color:white; cursor:pointer; opacity: 0.7;">
@@ -148,7 +156,7 @@
 
         <div id="dropZone" class="text-center">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" style="opacity: 0.6; margin-bottom: 5px;"><path d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-            <div style="font-size: 0.8rem; color: #cbd5e1;">點擊選取音樂 (可離線使用)</div>
+            <div style="font-size: 0.8rem; color: #cbd5e1;">點擊選取音樂 (支援斷點續聽)</div>
             <input type="file" id="fileInput" multiple accept="audio/*" style="display: none;">
         </div>
 
@@ -158,12 +166,11 @@
                 <svg id="musicIcon" width="45" height="45" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="1.5"><path d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
             </div>
             
-            <div id="trackName" style="font-weight: bold; font-size: 1.1rem; margin-bottom: 0.4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #f8fafc;">尚未選取</div>
+            <div id="trackName" style="font-weight: bold; font-size: 1.1rem; margin-bottom: 0.4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #f8fafc;">請選取檔案</div>
             
-            <!-- 進度拉桿 -->
             <input type="range" id="progressBar" min="0" max="100" value="0">
             
-            <div class="flex justify-between" style="font-size: 11px; color: #94a3b8; font-family: 'Courier New', Courier, monospace; margin-bottom: 1rem;">
+            <div class="flex justify-between" style="font-size: 11px; color: #94a3b8; font-family: monospace; margin-bottom: 1rem;">
                 <span id="curTime">00:00</span>
                 <span id="durTime">00:00</span>
             </div>
@@ -186,10 +193,7 @@
         // PWA Service Worker 註冊
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                const swCode = `
-                    self.addEventListener('install', e => self.skipWaiting());
-                    self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => caches.match(e.request))));
-                `;
+                const swCode = `self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => caches.match(e.request))));`;
                 const blob = new Blob([swCode], {type: 'application/javascript'});
                 navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
             });
@@ -207,21 +211,67 @@
             tracks = files;
             $('playlist').innerHTML = tracks.map((t, i) => `<li id="t-${i}">${i+1}. ${t.name.replace(/\.[^/.]+$/, "")}</li>`).join('');
             tracks.forEach((_, i) => $(`t-${i}`).onclick = () => loadTrack(i));
+            
+            // 載入清單後，自動載入第一首
             loadTrack(0);
         };
 
         function loadTrack(i) {
             currentIndex = i;
-            const file = tracks[i];
+            const file = tracks[currentIndex];
+            const fileName = file.name;
             audio.src = URL.createObjectURL(file);
-            $('trackName').textContent = file.name.replace(/\.[^/.]+$/, "");
+            $('trackName').textContent = fileName.replace(/\.[^/.]+$/, "");
             Array.from($('playlist').children).forEach((li, idx) => li.className = idx === i ? 'active' : '');
+            
+            // 載入元數據後檢查是否有紀錄
+            audio.onloadedmetadata = () => {
+                $('durTime').textContent = fmt(audio.duration);
+                checkResumeRecord(fileName);
+            };
+            
             playTrack();
         }
 
+        // --- 斷點續聽邏輯 ---
+        function checkResumeRecord(fileName) {
+            const savedData = localStorage.getItem('music_history');
+            if (savedData) {
+                const history = JSON.parse(savedData);
+                // 檢查是否為同一個檔案名
+                if (history.name === fileName && history.time > 5) {
+                    audio.currentTime = history.time;
+                    showToast(`已接續播放至 ${fmt(history.time)}`);
+                }
+            }
+        }
+
+        function showToast(msg) {
+            $('resumeToast').textContent = msg;
+            $('resumeToast').style.display = 'block';
+            setTimeout(() => { $('resumeToast').style.display = 'none'; }, 3000);
+        }
+
+        // 播放時每秒紀錄一次進度
+        audio.ontimeupdate = () => {
+            if (audio.duration) {
+                const val = (audio.currentTime / audio.duration) * 100;
+                $('progressBar').value = val;
+                $('curTime').textContent = fmt(audio.currentTime);
+                
+                // 儲存進度 (檔案名稱 + 當前秒數)
+                if (tracks[currentIndex]) {
+                    localStorage.setItem('music_history', JSON.stringify({
+                        name: tracks[currentIndex].name,
+                        time: audio.currentTime
+                    }));
+                }
+            }
+        };
+
         function playTrack() {
             if(!audio.src) return;
-            audio.play().catch(e => console.log("Play error", e));
+            audio.play().catch(() => {});
             $('playIcon').classList.add('hidden');
             $('pauseIcon').classList.remove('hidden');
             $('musicIcon').classList.add('animate-spin');
@@ -237,27 +287,14 @@
         $('playBtn').onclick = () => audio.paused ? playTrack() : pauseTrack();
         $('nextBtn').onclick = () => loadTrack((currentIndex + 1) % tracks.length);
         $('prevBtn').onclick = () => loadTrack((currentIndex - 1 + tracks.length) % tracks.length);
-        audio.onended = () => $('nextBtn').click();
-
-        // 更新進度條數值
-        audio.ontimeupdate = () => {
-            if (audio.duration) {
-                const val = (audio.currentTime / audio.duration) * 100;
-                $('progressBar').value = val;
-                $('curTime').textContent = fmt(audio.currentTime);
-            }
+        audio.onended = () => {
+            localStorage.removeItem('music_history'); // 播完就清除紀錄
+            $('nextBtn').click();
         };
 
-        audio.onloadedmetadata = () => {
-            $('durTime').textContent = fmt(audio.duration);
-        };
-
-        // --- 關鍵修正：調整播放時段邏輯 ---
         $('progressBar').oninput = function() {
             if (audio.duration) {
-                // 計算對應的時間點： (拉桿目前的百分比 / 100) * 總長度
-                const seekTo = (this.value / 100) * audio.duration;
-                audio.currentTime = seekTo;
+                audio.currentTime = (this.value / 100) * audio.duration;
             }
         };
 
@@ -268,23 +305,18 @@
             return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
         }
 
-        // 定時器邏輯
+        // 定時器
         $('timerBtn').onclick = () => $('timerPanel').style.display = $('timerPanel').style.display === 'block' ? 'none' : 'block';
-        
         window.setTimer = (m) => {
             clearInterval(timer);
-            if (!m) {
-                $('timerStatus').textContent = '';
-                return;
-            }
+            if (!m) { $('timerStatus').textContent = ''; return; }
             remain = m * 60;
             timer = setInterval(() => {
                 remain--;
                 if (remain <= 0) {
                     clearInterval(timer);
                     pauseTrack();
-                    $('timerStatus').textContent = '定時時間到';
-                    alert("定時時間到，播放器已停止。");
+                    showToast("定時結束，已停止。");
                 } else {
                     $('timerStatus').textContent = `倒數關機: ${Math.floor(remain/60)}:${(remain%60).toString().padStart(2,'0')}`;
                 }
