@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>私人音樂盒 (多紀錄續聽版)</title>
+    <title>私人音樂盒 (全記憶續聽版)</title>
     
     <!-- PWA 離線支援與圖示設定 -->
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3844/3844720.png">
@@ -132,6 +132,12 @@
         .timer-btn { background: rgba(255,255,255,0.08); border: none; color: white; padding: 0.6rem; border-radius: 8px; font-size: 0.75rem; }
         
         .hidden { display: none; }
+
+        /* 上次紀錄標記 */
+        .last-record-tag {
+            font-size: 10px; background: rgba(255,255,255,0.15); padding: 2px 6px; 
+            border-radius: 4px; margin-left: 8px; vertical-align: middle;
+        }
     </style>
 </head>
 <body>
@@ -158,7 +164,7 @@
 
         <div id="dropZone" class="text-center">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" style="opacity: 0.6; margin-bottom: 5px;"><path d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-            <div style="font-size: 0.8rem; color: #cbd5e1;">點擊選取音樂 (多檔案記憶續聽)</div>
+            <div id="uploadHint" style="font-size: 0.8rem; color: #cbd5e1;">點擊選取檔案以繼續聽取</div>
             <input type="file" id="fileInput" multiple accept="audio/*" style="display: none;">
         </div>
 
@@ -170,7 +176,6 @@
             
             <div id="trackName" style="font-weight: bold; font-size: 1.1rem; margin-bottom: 0.4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #f8fafc;">請選取檔案</div>
             
-            <!-- 進度拉桿：確保支援跳轉 -->
             <input type="range" id="progressBar" min="0" max="100" value="0">
             
             <div class="flex justify-between" style="font-size: 11px; color: #94a3b8; font-family: monospace; margin-bottom: 1rem;">
@@ -193,7 +198,7 @@
     </div>
 
     <script>
-        // PWA Service Worker 註冊 (離線支援)
+        // PWA 註冊
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 const swCode = `self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => caches.match(e.request))));`;
@@ -206,15 +211,44 @@
         const audio = $('audio');
         let tracks = [], currentIndex = 0, timer = null, remain = 0;
 
+        // 初始化：嘗試恢復上一次關閉時的介面
+        window.addEventListener('DOMContentLoaded', () => {
+            const lastSession = localStorage.getItem('last_played_session');
+            if (lastSession) {
+                const data = JSON.parse(lastSession);
+                $('trackName').textContent = data.name.replace(/\.[^/.]+$/, "");
+                $('curTime').textContent = fmt(data.time);
+                // 提示使用者需要重新選取檔案
+                $('uploadHint').innerHTML = `上次聽到：<br><span style="color:#a855f7">${data.name}</span><br>點擊選取檔案以繼續播放`;
+            }
+        });
+
         $('dropZone').onclick = () => $('fileInput').click();
 
         $('fileInput').onchange = (e) => {
             const files = Array.from(e.target.files).filter(f => f.type.startsWith('audio/') || f.name.match(/\.(mp3|m4a|wav|aac)$/i));
             if (!files.length) return;
             tracks = files;
-            $('playlist').innerHTML = tracks.map((t, i) => `<li id="t-${i}">${i+1}. ${t.name.replace(/\.[^/.]+$/, "")}</li>`).join('');
+            
+            const lastSession = localStorage.getItem('last_played_session');
+            const lastFileName = lastSession ? JSON.parse(lastSession).name : null;
+            
+            $('playlist').innerHTML = tracks.map((t, i) => {
+                const isLast = t.name === lastFileName ? '<span class="last-record-tag">上次播放</span>' : '';
+                return `<li id="t-${i}">${i+1}. ${t.name.replace(/\.[^/.]+$/, "")} ${isLast}</li>`;
+            }).join('');
+            
             tracks.forEach((_, i) => $(`t-${i}`).onclick = () => loadTrack(i));
-            loadTrack(0);
+            
+            // 如果選取的檔案中有上一次播放的檔案，自動定位到那一首
+            let targetIdx = 0;
+            if (lastFileName) {
+                const found = tracks.findIndex(t => t.name === lastFileName);
+                if (found !== -1) targetIdx = found;
+            }
+            
+            loadTrack(targetIdx);
+            $('uploadHint').textContent = "檔案已就緒";
         };
 
         function loadTrack(i) {
@@ -225,20 +259,16 @@
             $('trackName').textContent = fileName.replace(/\.[^/.]+$/, "");
             Array.from($('playlist').children).forEach((li, idx) => li.className = idx === i ? 'active' : '');
             
-            // 檔案載入元數據後執行
             audio.onloadedmetadata = () => {
                 $('durTime').textContent = fmt(audio.duration);
-                // 檢查該特定檔案是否有儲存的進度
                 checkResumeRecord(fileName);
             };
             
             playTrack();
         }
 
-        // --- 多檔案進度記憶邏輯 ---
         function checkResumeRecord(fileName) {
             const history = getHistory();
-            // 檢查該檔名是否在歷史物件中，且時間大於 3 秒（太短不需接續）
             if (history[fileName] && history[fileName] > 3) {
                 audio.currentTime = history[fileName];
                 showToast(`偵測到紀錄，已接續播放至 ${fmt(history[fileName])}`);
@@ -252,21 +282,20 @@
 
         function saveHistory(fileName, time) {
             let history = getHistory();
-            
-            // 如果音樂快播完了（最後 2 秒），就清除該檔案紀錄
             if (audio.duration && (audio.duration - time < 2)) {
                 delete history[fileName];
             } else {
                 history[fileName] = time;
             }
-
-            // 限制紀錄數量，避免佔用空間 (最多 20 筆)
             const keys = Object.keys(history);
-            if (keys.length > 20) {
-                delete history[keys[0]]; // 移除最舊的一筆
-            }
-
+            if (keys.length > 30) delete history[keys[0]];
             localStorage.setItem('multi_music_history', JSON.stringify(history));
+            
+            // 額外儲存「最後一次播放」的檔案資訊，用於下次開啟 APP 時恢復介面
+            localStorage.setItem('last_played_session', JSON.stringify({
+                name: fileName,
+                time: time
+            }));
         }
 
         function showToast(msg) {
@@ -275,14 +304,11 @@
             setTimeout(() => { $('resumeToast').style.display = 'none'; }, 3000);
         }
 
-        // 定時紀錄進度
         audio.ontimeupdate = () => {
             if (audio.duration) {
                 const val = (audio.currentTime / audio.duration) * 100;
                 $('progressBar').value = val;
                 $('curTime').textContent = fmt(audio.currentTime);
-                
-                // 儲存進度
                 if (tracks[currentIndex]) {
                     saveHistory(tracks[currentIndex].name, audio.currentTime);
                 }
@@ -309,16 +335,15 @@
         $('prevBtn').onclick = () => loadTrack((currentIndex - 1 + tracks.length) % tracks.length);
         
         audio.onended = () => {
-            // 播完時移除該檔案紀錄
             if(tracks[currentIndex]) {
                 let history = getHistory();
                 delete history[tracks[currentIndex].name];
                 localStorage.setItem('multi_music_history', JSON.stringify(history));
+                localStorage.removeItem('last_played_session');
             }
             $('nextBtn').click();
         };
 
-        // 進度條跳轉邏輯修復
         $('progressBar').oninput = function() {
             if (audio.duration) {
                 audio.currentTime = (this.value / 100) * audio.duration;
@@ -332,7 +357,6 @@
             return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
         }
 
-        // 定時器
         $('timerBtn').onclick = () => $('timerPanel').style.display = $('timerPanel').style.display === 'block' ? 'none' : 'block';
         window.setTimer = (m) => {
             clearInterval(timer);
