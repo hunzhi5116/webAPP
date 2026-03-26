@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>私人音樂盒 (捷徑收藏版)</title>
+    <title>私人音樂盒 (自動接續版)</title>
     
     <!-- PWA 離線支援與圖示設定 -->
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3844/3844720.png">
@@ -112,18 +112,18 @@
             padding: 0.7rem; font-size: 0.85rem; color: #94a3b8;
             border-radius: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
             margin-bottom: 2px; display: flex; justify-content: space-between; align-items: center;
+            cursor: pointer;
         }
+        #playlist li:hover { background: rgba(255,255,255,0.05); }
         #playlist li.active { color: #a855f7; background: rgba(168, 85, 247, 0.15); font-weight: bold; }
 
-        /* 釘選按鈕樣式 */
         .pin-btn {
             background: none; border: none; color: #64748b; cursor: pointer; padding: 2px;
             transition: 0.2s; display: flex; align-items: center;
         }
         .pin-btn:hover { color: #a855f7; }
-        .pin-btn.active { color: #a855f7; }
+        .pin-btn.pinned { color: #f59e0b !important; }
 
-        /* 常用檔案快捷區 */
         .shortcuts-panel {
             margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);
         }
@@ -145,7 +145,6 @@
             border: 1px dashed rgba(255,255,255,0.05); border-radius: 10px;
         }
 
-        /* 續聽提示 UI */
         #resumeToast {
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
             background: rgba(168, 85, 247, 0.95); color: white; padding: 8px 16px;
@@ -162,7 +161,7 @@
         .timer-btn { background: rgba(255,255,255,0.08); border: none; color: white; padding: 0.6rem; border-radius: 8px; font-size: 0.75rem; }
         
         .hidden { display: none; }
-        .last-record-tag { font-size: 10px; background: rgba(255,255,255,0.15); padding: 2px 6px; border-radius: 4px; }
+        .last-record-tag { font-size: 10px; background: rgba(168, 85, 247, 0.2); color: #d8b4fe; padding: 2px 6px; border-radius: 4px; margin-left: 5px; border: 1px solid rgba(168, 85, 247, 0.3); }
     </style>
 </head>
 <body>
@@ -189,7 +188,7 @@
 
         <div id="dropZone" class="text-center">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" style="opacity: 0.6; margin-bottom: 5px;"><path d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-            <div id="uploadHint" style="font-size: 0.75rem; color: #94a3b8;">選取檔案以繼續聽取</div>
+            <div id="uploadHint" style="font-size: 0.75rem; color: #94a3b8;">點擊選取檔案或資料夾</div>
             <input type="file" id="fileInput" multiple accept="audio/*" style="display: none;">
         </div>
 
@@ -199,7 +198,7 @@
                 <svg id="musicIcon" width="45" height="45" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="1.5"><path d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
             </div>
             
-            <div id="trackName" style="font-weight: bold; font-size: 1.1rem; margin-bottom: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #f8fafc;">請選取檔案</div>
+            <div id="trackName" style="font-weight: bold; font-size: 1.1rem; margin-bottom: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #f8fafc;">請先選取檔案</div>
             
             <input type="range" id="progressBar" min="0" max="100" value="0">
             
@@ -220,12 +219,9 @@
 
         <ul id="playlist"></ul>
 
-        <!-- 常用檔案捷徑區 -->
         <div class="shortcuts-panel">
             <div class="shortcut-title">常用檔案捷徑</div>
-            <div id="shortcutGrid" class="shortcut-grid">
-                <!-- 由 JS 動態生成 -->
-            </div>
+            <div id="shortcutGrid" class="shortcut-grid"></div>
         </div>
 
         <audio id="audio" style="display: none;"></audio>
@@ -234,9 +230,9 @@
     <script>
         const $ = id => document.getElementById(id);
         const audio = $('audio');
-        let tracks = [], currentIndex = 0, timer = null, remain = 0;
+        let tracks = [], currentIndex = -1, timer = null, remain = 0;
 
-        // 初始化
+        // 初始化檢查上次播放狀態
         window.addEventListener('DOMContentLoaded', () => {
             renderShortcuts();
             const lastSession = localStorage.getItem('last_played_session');
@@ -244,7 +240,7 @@
                 const data = JSON.parse(lastSession);
                 $('trackName').textContent = data.name.replace(/\.[^/.]+$/, "");
                 $('curTime').textContent = fmt(data.time);
-                $('uploadHint').innerHTML = `上次：<span style="color:#a855f7">${data.name.substring(0,10)}...</span><br>請點選捷徑或檔案`;
+                $('uploadHint').innerHTML = `待命：<span style="color:#a855f7">${data.name.substring(0,12)}...</span><br>請點選「選取檔案」載入`;
             }
         });
 
@@ -253,66 +249,73 @@
         $('fileInput').onchange = (e) => {
             const files = Array.from(e.target.files).filter(f => f.type.startsWith('audio/') || f.name.match(/\.(mp3|m4a|wav|aac)$/i));
             if (!files.length) return;
-            tracks = files;
             
+            tracks = files;
             const lastSession = localStorage.getItem('last_played_session');
             const lastFileName = lastSession ? JSON.parse(lastSession).name : null;
             
+            // 比對上次播放的檔案是否存在於這次選取的檔案中
+            let autoLoadIndex = -1;
+            if (lastFileName) {
+                autoLoadIndex = tracks.findIndex(t => t.name === lastFileName);
+            }
+
             updatePlaylistUI(lastFileName);
             
-            // 尋找目標檔案
-            let targetIdx = 0;
-            if (lastFileName) {
-                const found = tracks.findIndex(t => t.name === lastFileName);
-                if (found !== -1) targetIdx = found;
+            // 如果找到了上次的檔案，自動載入並接續
+            if (autoLoadIndex !== -1) {
+                loadTrack(autoLoadIndex, true);
+                showToast("已自動載入上次檔案");
+            } else {
+                loadTrack(0, false); // 否則從第一個開始
             }
             
-            loadTrack(targetIdx);
-            $('uploadHint').textContent = "檔案庫已載入";
+            $('uploadHint').textContent = `已載入 ${tracks.length} 個檔案`;
         };
 
         function updatePlaylistUI(lastFileName) {
+            const pinnedFiles = JSON.parse(localStorage.getItem('pinned_files') || '[]');
+            
             $('playlist').innerHTML = tracks.map((t, i) => {
                 const isLast = t.name === lastFileName ? '<span class="last-record-tag">上次</span>' : '';
+                const isPinned = pinnedFiles.includes(t.name) ? 'pinned' : '';
                 return `
-                    <li id="t-${i}" class="${currentIndex === i ? 'active' : ''}">
+                    <li id="t-${i}" class="${currentIndex === i ? 'active' : ''}" onclick="loadTrack(${i}, true)">
                         <div style="flex:1; overflow:hidden; text-overflow:ellipsis;">${i+1}. ${t.name.replace(/\.[^/.]+$/, "")} ${isLast}</div>
-                        <button class="pin-btn" onclick="event.stopPropagation(); togglePin('${t.name}')">
+                        <button class="pin-btn ${isPinned}" onclick="event.stopPropagation(); togglePin('${t.name}')">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10V8a2 2 0 00-2-2H5a2 2 0 00-2 2v2M7 10v10a2 2 0 002 2h6a2 2 0 002-2V10M12 6V3M12 21v-3"/></svg>
                         </button>
                     </li>`;
             }).join('');
-            tracks.forEach((_, i) => {
-                const el = $(`t-${i}`);
-                if(el) el.onclick = () => loadTrack(i);
-            });
         }
 
-        function loadTrack(i) {
+        function loadTrack(i, shouldPlay) {
             if (!tracks[i]) return;
             currentIndex = i;
             const file = tracks[currentIndex];
             const fileName = file.name;
+            
+            // 釋放舊的 URL 以節省記憶體
+            if (audio.src) URL.revokeObjectURL(audio.src);
+            
             audio.src = URL.createObjectURL(file);
             $('trackName').textContent = fileName.replace(/\.[^/.]+$/, "");
             
-            // 更新清單選取狀態
+            // 更新 UI
             const items = $('playlist').querySelectorAll('li');
             items.forEach((li, idx) => li.classList.toggle('active', idx === i));
             
             audio.onloadedmetadata = () => {
                 $('durTime').textContent = fmt(audio.duration);
-                checkResumeRecord(fileName);
+                // 讀取進度
+                const history = getHistory();
+                if (history[fileName] && history[fileName] > 2) {
+                    audio.currentTime = history[fileName];
+                    showToast(`接續至 ${fmt(history[fileName])}`);
+                }
             };
-            playTrack();
-        }
 
-        function checkResumeRecord(fileName) {
-            const history = getHistory();
-            if (history[fileName] && history[fileName] > 2) {
-                audio.currentTime = history[fileName];
-                showToast(`已接續：${fmt(history[fileName])}`);
-            }
+            if (shouldPlay) playTrack();
         }
 
         function getHistory() {
@@ -320,19 +323,20 @@
             return data ? JSON.parse(data) : {};
         }
 
-        // --- 常用檔案與捷徑邏輯 ---
         function togglePin(fileName) {
             let pins = JSON.parse(localStorage.getItem('pinned_files') || '[]');
             const idx = pins.indexOf(fileName);
             if (idx === -1) {
-                if (pins.length >= 3) pins.shift(); // 最多3個，擠掉舊的
+                if (pins.length >= 3) pins.shift();
                 pins.push(fileName);
             } else {
                 pins.splice(idx, 1);
             }
             localStorage.setItem('pinned_files', JSON.stringify(pins));
             renderShortcuts();
-            showToast(idx === -1 ? "已加入捷徑" : "已移除捷徑");
+            // 重新更新播放清單中的圖標顏色
+            const lastSession = localStorage.getItem('last_played_session');
+            updatePlaylistUI(lastSession ? JSON.parse(lastSession).name : null);
         }
 
         function renderShortcuts() {
@@ -341,7 +345,7 @@
             const grid = $('shortcutGrid');
             
             if (pins.length === 0) {
-                grid.innerHTML = '<div class="shortcut-empty">目前無捷徑，請點擊清單旁的圖示釘選</div>';
+                grid.innerHTML = '<div class="shortcut-empty">釘選清單中的檔案，此處會出現捷徑</div>';
                 return;
             }
 
@@ -354,24 +358,25 @@
         }
 
         function quickLoad(fileName) {
-            // 如果檔案已經在目前清單中，直接跳轉
             const foundIdx = tracks.findIndex(t => t.name === fileName);
             if (foundIdx !== -1) {
-                loadTrack(foundIdx);
+                loadTrack(foundIdx, true);
             } else {
-                // 如果沒載入檔案，提示使用者
-                localStorage.setItem('last_played_session', JSON.stringify({ name: fileName, time: getHistory()[fileName] || 0 }));
+                // 尚未載入檔案時的處理
+                const history = getHistory();
+                localStorage.setItem('last_played_session', JSON.stringify({ name: fileName, time: history[fileName] || 0 }));
                 $('trackName').textContent = fileName.replace(/\.[^/.]+$/, "");
-                $('curTime').textContent = fmt(getHistory()[fileName] || 0);
-                showToast("請點選上方『選取檔案』載入此音檔");
-                $('dropZone').style.borderColor = '#a855f7';
-                setTimeout(() => $('dropZone').style.borderColor = '', 2000);
+                $('curTime').textContent = fmt(history[fileName] || 0);
+                showToast("請點選「選取檔案」載入硬碟檔案");
+                $('dropZone').style.background = 'rgba(168, 85, 247, 0.2)';
+                setTimeout(() => $('dropZone').style.background = '', 2000);
             }
         }
 
         function saveHistory(fileName, time) {
             let history = getHistory();
-            if (audio.duration && (audio.duration - time < 2)) {
+            // 如果快聽完了就清除紀錄
+            if (audio.duration && (audio.duration - time < 3)) {
                 delete history[fileName];
             } else {
                 history[fileName] = time;
@@ -379,14 +384,14 @@
             localStorage.setItem('multi_music_history', JSON.stringify(history));
             localStorage.setItem('last_played_session', JSON.stringify({ name: fileName, time: time }));
             
-            // 每 10 秒更新一次捷徑顯示的時間
+            // 每 10 秒更新捷徑時間顯示
             if (Math.floor(time) % 10 === 0) renderShortcuts();
         }
 
         function showToast(msg) {
             $('resumeToast').textContent = msg;
             $('resumeToast').style.display = 'block';
-            setTimeout(() => { $('resumeToast').style.display = 'none'; }, 2000);
+            setTimeout(() => { $('resumeToast').style.display = 'none'; }, 2500);
         }
 
         audio.ontimeupdate = () => {
@@ -400,7 +405,9 @@
 
         function playTrack() {
             if(!audio.src) return;
-            audio.play().catch(() => {});
+            audio.play().catch(err => {
+                console.log("播放失敗，可能需要使用者互動", err);
+            });
             $('playIcon').classList.add('hidden');
             $('pauseIcon').classList.remove('hidden');
             $('musicIcon').classList.add('animate-spin');
@@ -414,8 +421,8 @@
         }
 
         $('playBtn').onclick = () => audio.paused ? playTrack() : pauseTrack();
-        $('nextBtn').onclick = () => loadTrack((currentIndex + 1) % tracks.length);
-        $('prevBtn').onclick = () => loadTrack((currentIndex - 1 + tracks.length) % tracks.length);
+        $('nextBtn').onclick = () => loadTrack((currentIndex + 1) % tracks.length, true);
+        $('prevBtn').onclick = () => loadTrack((currentIndex - 1 + tracks.length) % tracks.length, true);
         
         audio.onended = () => $('nextBtn').click();
 
@@ -440,7 +447,7 @@
                 if (remain <= 0) {
                     clearInterval(timer);
                     pauseTrack();
-                    showToast("已定時關機");
+                    showToast("定時結束：已停止播放");
                 } else {
                     $('timerStatus').textContent = `倒數關機: ${Math.floor(remain/60)}:${(remain%60).toString().padStart(2,'0')}`;
                 }
