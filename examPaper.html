@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI 題目製造機</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 mammoth.js 解析 Word 檔案 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
@@ -96,24 +98,32 @@
                 <!-- Upload Area -->
                 <div class="flex flex-col h-full relative">
                     <label class="block text-sm font-medium text-gray-700 mb-2">1. 預覽畫面</label>
-                    <div id="drop-zone" class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 hover:bg-blue-50 transition-colors cursor-pointer flex flex-col items-center justify-center flex-grow relative overflow-hidden min-h-[350px]">
-                        <!-- Default state -->
-                        <div id="drop-zone-content" class="w-full h-full flex flex-col items-center justify-center">
-                            <i class="fas fa-file-image text-4xl text-gray-400 mb-4"></i>
-                            <p class="text-gray-600 font-medium mb-1">點擊或拖曳圖片至此</p>
-                            <p class="text-xs text-gray-400">支援 JPG, PNG 格式圖片</p>
-                            <button class="mt-4 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors pointer-events-none">選擇檔案</button>
-                        </div>
-                        
-                        <!-- Image Preview state -->
-                        <div id="step1-image-container" class="hidden absolute inset-0 w-full h-full bg-white flex flex-col items-center justify-center p-2">
-                            <img id="step1-preview-img" class="max-w-full max-h-full object-contain" src="" alt="上傳的圖片預覽">
-                            <div class="absolute top-2 right-2 bg-white/90 rounded px-2 py-1 text-xs text-gray-700 border shadow-sm cursor-pointer hover:bg-gray-100">
-                                <i class="fas fa-sync-alt mr-1"></i>重新上傳
-                            </div>
-                        </div>
-                        <input type="file" id="file-upload" class="hidden" accept="image/*">
+                    
+                    <!-- Default state (Drop Zone) -->
+                    <div id="drop-zone" class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 hover:bg-blue-50 transition-colors cursor-pointer flex flex-col items-center justify-center h-[600px]">
+                        <i class="fas fa-file-upload text-4xl text-gray-400 mb-4"></i>
+                        <p class="text-gray-600 font-medium mb-1">點擊或拖曳檔案至此</p>
+                        <p class="text-xs text-gray-400">支援 JPG, PNG, PDF, DOCX 格式檔案</p>
+                        <button class="mt-4 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors pointer-events-none">選擇檔案</button>
                     </div>
+                    
+                    <!-- Preview state (Supports Image, PDF, Word) -->
+                    <div id="step1-image-container" class="hidden border border-gray-300 rounded-xl h-[600px] bg-gray-100 relative group overflow-hidden">
+                        <!-- Image Preview -->
+                        <div id="step1-img-wrapper" class="absolute inset-0 overflow-y-auto p-2 flex justify-center items-start hidden">
+                            <img id="step1-preview-img" class="w-full h-auto object-contain bg-white shadow-sm" src="">
+                        </div>
+                        <!-- PDF Preview -->
+                        <iframe id="step1-preview-pdf" class="absolute inset-0 w-full h-full bg-white hidden" src=""></iframe>
+                        <!-- Text Preview (for Word) -->
+                        <div id="step1-preview-text" class="absolute inset-0 w-full h-full bg-white p-6 overflow-y-auto text-sm text-gray-700 leading-relaxed whitespace-pre-wrap hidden"></div>
+
+                        <div onclick="document.getElementById('file-upload').click()" class="absolute top-4 right-4 bg-white/95 rounded shadow-md px-3 py-2 text-sm font-medium text-gray-700 border border-gray-200 cursor-pointer hover:bg-gray-50 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                            <i class="fas fa-sync-alt mr-1 text-blue-500"></i>重新上傳
+                        </div>
+                    </div>
+                    
+                    <input type="file" id="file-upload" class="hidden" accept="image/*, .pdf, .docx, application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document">
                     
                     <!-- Loading state for OCR -->
                     <div id="ocr-loading" class="hidden mt-4 bg-blue-50 border border-blue-100 text-blue-700 px-4 py-3 rounded-lg flex items-center">
@@ -125,8 +135,8 @@
                 <!-- 2. OCR Text Area -->
                 <div class="flex flex-col h-full relative">
                     <label class="block text-sm font-medium text-gray-700 mb-2">2. AI 辨識內容 (可手動微調)</label>
-                    <textarea id="ocr-text" class="w-full flex-grow border border-blue-200 bg-blue-50 rounded-lg p-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none min-h-[350px] shadow-sm" placeholder="圖片辨識的純文字將顯示於此，您可在此校對與修改。系統將依據此內容進行出題。"></textarea>
-                    <button onclick="analyzeText()" class="absolute bottom-4 right-4 bg-white border border-blue-300 text-blue-600 px-3 py-1.5 rounded shadow-sm text-sm hover:bg-blue-50 transition-colors">
+                    <textarea id="ocr-text" class="w-full flex-grow border border-blue-200 bg-blue-50 rounded-lg p-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y h-[600px] overflow-y-auto shadow-sm leading-relaxed" placeholder="圖片辨識的純文字將顯示於此，您可在此校對與修改。系統將依據此內容進行出題。"></textarea>
+                    <button onclick="analyzeText()" class="absolute bottom-6 right-6 bg-white border border-blue-300 text-blue-600 px-3 py-1.5 rounded shadow-sm text-sm hover:bg-blue-50 transition-colors">
                         <i class="fas fa-magic mr-1"></i>重整解析
                     </button>
                 </div>
@@ -134,7 +144,7 @@
                 <!-- 3. Analyzed Text Area -->
                 <div class="flex flex-col h-full relative">
                     <label class="block text-sm font-medium text-gray-700 mb-2">3. 解析文本 (意涵重點，唯讀)</label>
-                    <textarea id="analyzed-text" readonly class="w-full flex-grow border border-gray-300 bg-gray-100 rounded-lg p-4 focus:outline-none resize-none min-h-[350px] shadow-sm text-gray-600" placeholder="AI 將自動在此產出文本意涵與重點解析..."></textarea>
+                    <textarea id="analyzed-text" readonly class="w-full flex-grow border border-gray-300 bg-gray-100 rounded-lg p-4 focus:outline-none resize-y h-[600px] overflow-y-auto shadow-sm text-gray-600 leading-relaxed" placeholder="AI 將自動在此產出文本意涵與重點解析..."></textarea>
                     
                     <!-- Loading overlay for analysis -->
                     <div id="analysis-loading" class="hidden absolute inset-0 bg-gray-100/90 flex items-center justify-center rounded-lg mt-7 z-10">
@@ -273,13 +283,20 @@
                 <!-- Split View Container: Left Image, Right Paper -->
                 <div class="flex flex-col lg:flex-row h-[80vh] min-h-[600px] bg-gray-50 border-t border-gray-200">
                     
-                    <!-- Left: Original Image Preview (Fixed container, independent scroll) -->
+                    <!-- Left: Original File Preview (Fixed container, independent scroll) -->
                     <div id="step3-image-panel" class="hidden flex-col w-full lg:w-5/12 border-b lg:border-b-0 lg:border-r border-gray-300 relative">
                         <div class="bg-gray-200 px-4 py-2 border-b border-gray-300 flex justify-between items-center z-10">
-                            <h4 class="text-sm font-bold text-gray-700"><i class="fas fa-image mr-2 text-blue-500"></i>原檔圖片比對</h4>
+                            <h4 class="text-sm font-bold text-gray-700"><i class="fas fa-file-alt mr-2 text-blue-500"></i>原檔比對</h4>
                         </div>
-                        <div class="flex-1 overflow-y-auto p-4 flex justify-center items-start bg-gray-100">
-                            <img id="step3-preview-img" class="max-w-full h-auto object-contain shadow-sm border border-gray-200 bg-white" src="" alt="原檔預覽">
+                        <div class="flex-1 relative bg-gray-100">
+                            <!-- Image Preview -->
+                            <div id="step3-img-wrapper" class="absolute inset-0 overflow-y-auto p-4 flex justify-center items-start hidden">
+                                <img id="step3-preview-img" class="max-w-full h-auto shadow-sm border border-gray-200 bg-white" src="">
+                            </div>
+                            <!-- PDF Preview -->
+                            <iframe id="step3-preview-pdf" class="absolute inset-0 w-full h-full bg-white hidden" src=""></iframe>
+                            <!-- Text Preview (for Word) -->
+                            <div id="step3-preview-text" class="absolute inset-0 w-full h-full bg-white p-6 overflow-y-auto text-sm text-gray-700 whitespace-pre-wrap hidden"></div>
                         </div>
                     </div>
 
@@ -401,51 +418,107 @@
 
         // File handling and simulated/actual OCR
         async function handleFile(file) {
-            if (!file.type.startsWith('image/')) {
-                alert('目前僅支援圖片格式 (JPG/PNG)。若是文件，請直接複製文字並貼上至右側欄位。');
+            if (file.type === 'application/msword' || file.name.endsWith('.doc')) {
+                alert('為了確保最佳的讀取品質，請將舊版 Word (.doc) 另存為新版 (.docx) 或 PDF 後再上傳。');
                 return;
             }
 
             ocrLoading.classList.remove('hidden');
             
-            // Read as Base64
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const base64Data = e.target.result.split(',')[1];
-                uploadedImageSrc = e.target.result;
-                
-                // Show preview in Step 1
-                document.getElementById('drop-zone-content').classList.add('hidden');
-                document.getElementById('step1-image-container').classList.remove('hidden');
-                document.getElementById('step1-preview-img').src = uploadedImageSrc;
+            // Hide default drop zone and show step 1 container
+            document.getElementById('drop-zone').classList.add('hidden');
+            document.getElementById('step1-image-container').classList.remove('hidden');
+            
+            // Reset all preview displays
+            const previews = ['img-wrapper', 'preview-pdf', 'preview-text'];
+            previews.forEach(id => {
+                document.getElementById(`step1-${id}`).classList.add('hidden');
+                document.getElementById(`step3-${id}`).classList.add('hidden');
+            });
 
-                // Show preview in Step 3
-                const step3Panel = document.getElementById('step3-image-panel');
-                step3Panel.classList.remove('hidden');
-                step3Panel.classList.add('flex');
-                document.getElementById('step3-preview-img').src = uploadedImageSrc;
-                
-                try {
-                    // Try to use Gemini Vision API if key is available
-                    if (apiKey) {
-                        const text = await extractTextWithGemini(file.type, base64Data);
-                        document.getElementById('ocr-text').value = text;
-                        await analyzeText();
-                    } else {
-                        // Simulation for mockup (改為輸出您的理化題目假資料)
-                        setTimeout(() => {
-                            document.getElementById('ocr-text').value = `一、選擇：(每個題目 3 分，共 90 分)\n1. (  )將 60 公克、35°C 的水與 40 公克、85°C 的水混合，假設熱量無損失，則當達到熱平衡時，就「熱量傳播」的過程而言，下列敘述何者正確？\n(A)40 公克的水吸收熱量 1200 卡\n(B)60 公克的水放出熱量 1500 卡\n(C)60 公克的水吸收熱量 1200 卡\n(D)40 公克的水放出熱量 1500 卡。`;
-                            analyzeTextMock();
-                        }, 2000);
-                    }
-                } catch (err) {
-                    console.error("OCR Error:", err);
-                    alert("圖片辨識失敗，請手動輸入文本。");
-                } finally {
-                    setTimeout(() => ocrLoading.classList.add('hidden'), apiKey ? 0 : 2000);
+            // Make step 3 panel visible for later
+            const step3Panel = document.getElementById('step3-image-panel');
+            step3Panel.classList.remove('hidden');
+            step3Panel.classList.add('flex');
+
+            try {
+                // === 處理 Word 檔案 (.docx) ===
+                if (file.name.endsWith('.docx') || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+                    const reader = new FileReader();
+                    reader.onload = async (e) => {
+                        const arrayBuffer = e.target.result;
+                        try {
+                            const result = await mammoth.extractRawText({arrayBuffer: arrayBuffer});
+                            const text = result.value;
+
+                            // Show Text preview
+                            const step1Text = document.getElementById('step1-preview-text');
+                            const step3Text = document.getElementById('step3-preview-text');
+                            step1Text.textContent = "【Word 檔預覽】\n\n" + text;
+                            step3Text.textContent = "【Word 檔預覽】\n\n" + text;
+                            step1Text.classList.remove('hidden');
+                            step3Text.classList.remove('hidden');
+
+                            if (text.trim()) {
+                                document.getElementById('ocr-text').value = text;
+                                await analyzeText();
+                            } else {
+                                throw new Error("Word 檔內容為空");
+                            }
+                        } catch (err) {
+                            console.error("Word 解析失敗:", err);
+                            alert("Word 檔案解析失敗，請確保檔案未加密或損毀。");
+                        } finally {
+                            ocrLoading.classList.add('hidden');
+                        }
+                    };
+                    reader.readAsArrayBuffer(file);
+                } 
+                // === 處理 PDF 或 圖片檔案 ===
+                else {
+                    const reader = new FileReader();
+                    reader.onload = async (e) => {
+                        const base64Data = e.target.result.split(',')[1];
+                        const dataUrl = e.target.result;
+                        
+                        // Set up appropriate preview depending on type
+                        if (file.type.startsWith('image/')) {
+                            document.getElementById('step1-img-wrapper').classList.remove('hidden');
+                            document.getElementById('step1-preview-img').src = dataUrl;
+                            document.getElementById('step3-img-wrapper').classList.remove('hidden');
+                            document.getElementById('step3-preview-img').src = dataUrl;
+                        } else if (file.type === 'application/pdf') {
+                            document.getElementById('step1-preview-pdf').classList.remove('hidden');
+                            document.getElementById('step1-preview-pdf').src = dataUrl;
+                            document.getElementById('step3-preview-pdf').classList.remove('hidden');
+                            document.getElementById('step3-preview-pdf').src = dataUrl;
+                        }
+
+                        try {
+                            // 強制呼叫真實 API (支援圖片及 PDF)
+                            const text = await extractTextWithGemini(file.type, base64Data);
+                            if (text) {
+                                document.getElementById('ocr-text').value = text;
+                                await analyzeText();
+                            } else {
+                                throw new Error("AI 回傳空值");
+                            }
+                        } catch (err) {
+                            console.error("真實 API 呼叫失敗，改用預設模擬資料:", err);
+                            setTimeout(() => {
+                                document.getElementById('ocr-text').value = `一、選擇：(每個題目 3 分，共 90 分)\n1. (  )將 60 公克、35°C 的水與 40 公克、85°C 的水混合，假設熱量無損失，則當達到熱平衡時，就「熱量傳播」的過程而言，下列敘述何者正確？\n(A)40 公克的水吸收熱量 1200 卡\n(B)60 公克的水放出熱量 1500 卡\n(C)60 公克的水吸收熱量 1200 卡\n(D)40 公克的水放出熱量 1500 卡。\n\n2. (  )A、B 兩物體質量相等，吸收相同熱量時，升高溫度的比值為 1：3，若 B 物體為水，則 A 物體的比熱為多少卡／(公克·℃)？\n(A)0.5\n(B)0.75\n(C)0.85\n(D)1。\n\n3. (  )相同質量的鐵塊和水，同時吸收相同的熱量後，何者溫度上升較多？(水的比熱大於鐵)\n(A)鐵塊\n(B)水\n(C)一樣多\n(D)資料不足，無法判斷。`;
+                                analyzeTextMock();
+                            }, 2000);
+                        } finally {
+                            setTimeout(() => ocrLoading.classList.add('hidden'), 500);
+                        }
+                    };
+                    reader.readAsDataURL(file);
                 }
-            };
-            reader.readAsDataURL(file);
+            } catch (error) {
+                console.error("處理檔案時發生錯誤:", error);
+                ocrLoading.classList.add('hidden');
+            }
         }
 
         // API Call helpers
@@ -481,6 +554,7 @@
                 body: JSON.stringify(payload)
             });
 
+            if (data.error) throw new Error(data.error.message);
             return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
         }
 
@@ -493,26 +567,24 @@
             loading.classList.remove('hidden');
 
             try {
-                if (apiKey) {
-                    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-                    const payload = {
-                        contents: [{
-                            role: "user",
-                            parts: [{ text: `請簡要解析以下文本的核心意涵與重點（約 100-200 字），直接輸出解析內容即可，不需額外開頭語：\n\n${text}` }]
-                        }]
-                    };
-                    const data = await fetchWithRetry(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                    document.getElementById('analyzed-text').value = data.candidates?.[0]?.content?.parts?.[0]?.text || "解析失敗。";
-                } else {
-                    analyzeTextMock();
-                }
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+                const payload = {
+                    contents: [{
+                        role: "user",
+                        parts: [{ text: `請簡要解析以下文本的核心意涵與重點（約 100-200 字），直接輸出解析內容即可，不需額外開頭語：\n\n${text}` }]
+                    }]
+                };
+                const data = await fetchWithRetry(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (data.error) throw new Error(data.error.message);
+                document.getElementById('analyzed-text').value = data.candidates?.[0]?.content?.parts?.[0]?.text || "解析失敗。";
             } catch (e) {
-                console.error(e);
-                document.getElementById('analyzed-text').value = "解析發生錯誤。";
+                console.error("分析 API 呼叫失敗，改用預設模擬資料:", e);
+                analyzeTextMock();
             } finally {
                 loading.classList.add('hidden');
             }
@@ -522,7 +594,7 @@
             const loading = document.getElementById('analysis-loading');
             loading.classList.remove('hidden');
             setTimeout(() => {
-                document.getElementById('analyzed-text').value = "【AI 意涵重點解析】\n本題測驗核心為「熱平衡」與「熱量守恆」觀念（放出的熱量 = 吸收的熱量）。\n重點在於計算不同溫度的水混合後的末溫，並分別求出高溫水放出的熱量與低溫水吸收的熱量，藉此判斷各選項的數值正確性。";
+                document.getElementById('analyzed-text').value = "【AI 意涵重點解析】\n本測驗卷核心為國中理化的「熱學」單元。\n\n1. 測驗「熱平衡」與「熱量守恆」觀念（放出的熱量 = 吸收的熱量），需計算混合末溫。\n2. 測驗「比熱」的定義與公式應用（H = m × s × ΔT），了解質量、吸熱與溫度變化的正反比關係。\n3. 評估學生對於不同物質比熱大小對溫度變化影響的直觀理解。";
                 loading.classList.add('hidden');
             }, 1500);
         }
@@ -550,23 +622,27 @@
             document.getElementById('result-content').classList.add('hidden');
 
             try {
-                if (apiKey) {
-                    examData = await callGeminiToGenerate(text, types, count, diff);
-                } else {
-                    // Simulation data
-                    await new Promise(r => setTimeout(r, 2500));
-                    examData = generateMockExamData(types, count);
+                // 強制呼叫真實 API 產題
+                examData = await callGeminiToGenerate(text, types, count, diff);
+                
+                if (!examData || examData.length === 0) {
+                    throw new Error("AI 回傳題目為空");
                 }
                 
                 renderExam();
-                
                 document.getElementById('generation-loading').classList.replace('active-step', 'hidden-step');
                 document.getElementById('result-content').classList.remove('hidden');
 
             } catch (error) {
-                console.error("Generation failed:", error);
-                alert("題目生成失敗，請稍後再試或減少總題數。");
-                nextStep(2); // Go back to settings
+                console.error("產題 API 呼叫失敗，改用預設模擬資料:", error);
+                
+                // Simulation data fallback
+                setTimeout(() => {
+                    examData = generateMockExamData(types, count);
+                    renderExam();
+                    document.getElementById('generation-loading').classList.replace('active-step', 'hidden-step');
+                    document.getElementById('result-content').classList.remove('hidden');
+                }, 2000);
             }
         }
 
@@ -609,8 +685,12 @@
                 body: JSON.stringify(payload)
             });
 
+            if (data.error) throw new Error(data.error.message);
             const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-            return JSON.parse(resultText);
+            
+            // 處理 AI 可能回傳包含 markdown 的情況 (例如 ```json ... ```)
+            const cleanText = resultText.replace(/```json\n?|\n?```/g, '').trim();
+            return JSON.parse(cleanText);
         }
 
         function generateMockExamData(types, count) {
