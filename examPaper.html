@@ -100,7 +100,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-2">1. 預覽畫面</label>
                     
                     <!-- Default state (Drop Zone) -->
-                    <div id="drop-zone" class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 hover:bg-blue-50 transition-colors cursor-pointer flex flex-col items-center justify-center h-[600px]">
+                    <div id="drop-zone" class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 hover:bg-blue-50 transition-colors cursor-pointer flex flex-col items-center justify-center h-[400px]">
                         <i class="fas fa-file-upload text-4xl text-gray-400 mb-4"></i>
                         <p class="text-gray-600 font-medium mb-1">點擊或拖曳檔案至此</p>
                         <p class="text-xs text-gray-400">支援 JPG, PNG, PDF, DOCX 格式檔案</p>
@@ -108,7 +108,7 @@
                     </div>
                     
                     <!-- Preview state (Supports Image, PDF, Word) -->
-                    <div id="step1-image-container" class="hidden border border-gray-300 rounded-xl h-[600px] bg-gray-100 relative group overflow-hidden">
+                    <div id="step1-image-container" class="hidden border border-gray-300 rounded-xl h-[400px] bg-gray-100 relative group overflow-hidden">
                         <!-- Image Preview -->
                         <div id="step1-img-wrapper" class="absolute inset-0 overflow-y-auto p-2 flex justify-center items-start hidden">
                             <img id="step1-preview-img" class="w-full h-auto object-contain bg-white shadow-sm" src="">
@@ -128,14 +128,14 @@
                     <!-- Loading state for OCR -->
                     <div id="ocr-loading" class="hidden mt-4 bg-blue-50 border border-blue-100 text-blue-700 px-4 py-3 rounded-lg flex items-center">
                         <i class="fas fa-spinner fa-spin mr-3"></i> 
-                        <span>AI 正在辨識圖片文字，請稍候...</span>
+                        <span>AI 正在辨識檔案文字，請稍候...</span>
                     </div>
                 </div>
 
                 <!-- 2. OCR Text Area -->
                 <div class="flex flex-col h-full relative">
                     <label class="block text-sm font-medium text-gray-700 mb-2">2. AI 辨識內容 (可手動微調)</label>
-                    <textarea id="ocr-text" class="w-full flex-grow border border-blue-200 bg-blue-50 rounded-lg p-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y h-[600px] overflow-y-auto shadow-sm leading-relaxed" placeholder="圖片辨識的純文字將顯示於此，您可在此校對與修改。系統將依據此內容進行出題。"></textarea>
+                    <textarea id="ocr-text" class="w-full flex-grow border border-blue-200 bg-blue-50 rounded-lg p-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y h-[400px] overflow-y-auto shadow-sm leading-relaxed" placeholder="檔案辨識的純文字將顯示於此，您可在此校對與修改。系統將依據此內容進行出題。"></textarea>
                     <button onclick="analyzeText()" class="absolute bottom-6 right-6 bg-white border border-blue-300 text-blue-600 px-3 py-1.5 rounded shadow-sm text-sm hover:bg-blue-50 transition-colors">
                         <i class="fas fa-magic mr-1"></i>重整解析
                     </button>
@@ -144,7 +144,7 @@
                 <!-- 3. Analyzed Text Area -->
                 <div class="flex flex-col h-full relative">
                     <label class="block text-sm font-medium text-gray-700 mb-2">3. 解析文本 (意涵重點，唯讀)</label>
-                    <textarea id="analyzed-text" readonly class="w-full flex-grow border border-gray-300 bg-gray-100 rounded-lg p-4 focus:outline-none resize-y h-[600px] overflow-y-auto shadow-sm text-gray-600 leading-relaxed" placeholder="AI 將自動在此產出文本意涵與重點解析..."></textarea>
+                    <textarea id="analyzed-text" readonly class="w-full flex-grow border border-gray-300 bg-gray-100 rounded-lg p-4 focus:outline-none resize-y h-[400px] overflow-y-auto shadow-sm text-gray-600 leading-relaxed" placeholder="AI 將自動在此產出文本意涵與重點解析..."></textarea>
                     
                     <!-- Loading overlay for analysis -->
                     <div id="analysis-loading" class="hidden absolute inset-0 bg-gray-100/90 flex items-center justify-center rounded-lg mt-7 z-10">
@@ -330,14 +330,17 @@
     <div id="export-container" style="display:none;"></div>
 
     <script>
-        // API Configuration setup (Gemini implementation pattern)
-        const apiKey = "AIzaSyDUQZ0IjKQjO6IWGxka7OvmhYdl6tAd3o4"; // System will inject this in Canvas environment
-        
+        // ==========================================
+        // 🔑 API 金鑰設定區塊
+        // ==========================================
+        const apiKey = "AIzaSyDUQZ0IjKQjO6IWGxka7OvmhYdl6tAd3o4"; // ⚠️ 請在此處雙引號內填入您專屬的 Google Gemini API Key
+        // ==========================================
+
         // Global State
         let currentStep = 1;
         let examData = [];
         let currentTab = 'student';
-        let uploadedImageSrc = null; // 儲存上傳的圖片供比對使用
+        let uploadedImageSrc = null;
 
         // Initialize drag and drop
         const dropZone = document.getElementById('drop-zone');
@@ -373,7 +376,7 @@
         function nextStep(step) {
             const ocrContent = document.getElementById('ocr-text') ? document.getElementById('ocr-text').value.trim() : '';
             
-            if (step === 2 && ocrContent === '') {
+            if (step === 2 && ocrContent === '' && !ocrContent.includes('錯誤訊息')) {
                 alert('請先上傳圖片或於「文字轉換」區塊輸入文本內容！');
                 return;
             }
@@ -416,7 +419,7 @@
             }
         }
 
-        // File handling and simulated/actual OCR
+        // File handling and actual OCR
         async function handleFile(file) {
             if (file.type === 'application/msword' || file.name.endsWith('.doc')) {
                 alert('為了確保最佳的讀取品質，請將舊版 Word (.doc) 另存為新版 (.docx) 或 PDF 後再上傳。');
@@ -504,11 +507,10 @@
                                 throw new Error("AI 回傳空值");
                             }
                         } catch (err) {
-                            console.error("真實 API 呼叫失敗，改用預設模擬資料:", err);
-                            setTimeout(() => {
-                                document.getElementById('ocr-text').value = `一、選擇：(每個題目 3 分，共 90 分)\n1. (  )將 60 公克、35°C 的水與 40 公克、85°C 的水混合，假設熱量無損失，則當達到熱平衡時，就「熱量傳播」的過程而言，下列敘述何者正確？\n(A)40 公克的水吸收熱量 1200 卡\n(B)60 公克的水放出熱量 1500 卡\n(C)60 公克的水吸收熱量 1200 卡\n(D)40 公克的水放出熱量 1500 卡。\n\n2. (  )A、B 兩物體質量相等，吸收相同熱量時，升高溫度的比值為 1：3，若 B 物體為水，則 A 物體的比熱為多少卡／(公克·℃)？\n(A)0.5\n(B)0.75\n(C)0.85\n(D)1。\n\n3. (  )相同質量的鐵塊和水，同時吸收相同的熱量後，何者溫度上升較多？(水的比熱大於鐵)\n(A)鐵塊\n(B)水\n(C)一樣多\n(D)資料不足，無法判斷。`;
-                                analyzeTextMock();
-                            }, 2000);
+                            console.error("真實 API 呼叫失敗:", err);
+                            // 若失敗，嚴格顯示錯誤訊息，絕不再給予假資料
+                            document.getElementById('ocr-text').value = `[⚠️ AI 辨識失敗]\n\n錯誤訊息：${err.message || '連線錯誤'}\n\n說明：目前無法成功連線至 AI 伺服器。\n(若您是下載此網頁至電腦本地端執行，系統會因為缺少有效的 API Key 而無法運作)。\n\n👉 解決方案：\n1. 請確認程式碼上方 \`const apiKey\` 變數中已填寫正確的 Google Gemini API Key。\n2. 或者，您可以直接在此框內「手動輸入或貼上」您的教材純文字內容，系統依舊能根據您輸入的文字進行下一步出題！`;
+                            document.getElementById('analyzed-text').value = "等待有效內容以進行解析...";
                         } finally {
                             setTimeout(() => ocrLoading.classList.add('hidden'), 500);
                         }
@@ -537,7 +539,8 @@
         }
 
         async function extractTextWithGemini(mimeType, base64Data) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            // 已切換為 gemini-1.5-flash 正式版模型
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
             const payload = {
                 contents: [{
                     role: "user",
@@ -558,16 +561,18 @@
             return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
         }
 
-        // --- New Analysis Logic ---
+        // --- Analysis Logic ---
         async function analyzeText() {
             const text = document.getElementById('ocr-text').value.trim();
-            if (!text) return;
+            // 如果內容是錯誤訊息，則不進行解析
+            if (!text || text.includes('[⚠️ AI 辨識失敗]')) return;
 
             const loading = document.getElementById('analysis-loading');
             loading.classList.remove('hidden');
 
             try {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+                // 已切換為 gemini-1.5-flash 正式版模型
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
                 const payload = {
                     contents: [{
                         role: "user",
@@ -583,20 +588,11 @@
                 if (data.error) throw new Error(data.error.message);
                 document.getElementById('analyzed-text').value = data.candidates?.[0]?.content?.parts?.[0]?.text || "解析失敗。";
             } catch (e) {
-                console.error("分析 API 呼叫失敗，改用預設模擬資料:", e);
-                analyzeTextMock();
+                console.error("分析 API 呼叫失敗:", e);
+                document.getElementById('analyzed-text').value = `[⚠️ 意涵解析失敗]\n\n原因：${e.message || '無法連線至 AI'}\n\n請確認網路環境或 API 金鑰設定是否正確。`;
             } finally {
                 loading.classList.add('hidden');
             }
-        }
-
-        function analyzeTextMock() {
-            const loading = document.getElementById('analysis-loading');
-            loading.classList.remove('hidden');
-            setTimeout(() => {
-                document.getElementById('analyzed-text').value = "【AI 意涵重點解析】\n本測驗卷核心為國中理化的「熱學」單元。\n\n1. 測驗「熱平衡」與「熱量守恆」觀念（放出的熱量 = 吸收的熱量），需計算混合末溫。\n2. 測驗「比熱」的定義與公式應用（H = m × s × ΔT），了解質量、吸熱與溫度變化的正反比關係。\n3. 評估學生對於不同物質比熱大小對溫度變化影響的直觀理解。";
-                loading.classList.add('hidden');
-            }, 1500);
         }
 
         // Generate Exam Logic
@@ -611,6 +607,11 @@
             const diff = document.getElementById('q-difficulty').value;
             
             const ocrContent = document.getElementById('ocr-text').value.trim();
+            if (ocrContent.includes('[⚠️ AI 辨識失敗]')) {
+                alert("請確保已輸入有效的文本內容後，再進行出題！");
+                return;
+            }
+            
             const text = ocrContent; // 以文字轉換的內容作為出題依據
 
             // UI Transition
@@ -634,20 +635,18 @@
                 document.getElementById('result-content').classList.remove('hidden');
 
             } catch (error) {
-                console.error("產題 API 呼叫失敗，改用預設模擬資料:", error);
+                console.error("產題 API 呼叫失敗:", error);
+                alert("⚠️ 題目生成失敗！\n\n原因：" + error.message + "\n\n請確認您的網路連線與 API 金鑰設定。");
                 
-                // Simulation data fallback
-                setTimeout(() => {
-                    examData = generateMockExamData(types, count);
-                    renderExam();
-                    document.getElementById('generation-loading').classList.replace('active-step', 'hidden-step');
-                    document.getElementById('result-content').classList.remove('hidden');
-                }, 2000);
+                // 返回上一步
+                document.getElementById('generation-loading').classList.replace('active-step', 'hidden-step');
+                nextStep(2);
             }
         }
 
         async function callGeminiToGenerate(text, types, count, diff) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            // 已切換為 gemini-1.5-flash 正式版模型
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
             const prompt = `
             身為一位專業的教育工作者，請根據以下提供的文本內容，生成一份測驗試卷。
             【設定參數】
@@ -691,36 +690,6 @@
             // 處理 AI 可能回傳包含 markdown 的情況 (例如 ```json ... ```)
             const cleanText = resultText.replace(/```json\n?|\n?```/g, '').trim();
             return JSON.parse(cleanText);
-        }
-
-        function generateMockExamData(types, count) {
-            let mock = [];
-            for (let i = 1; i <= count; i++) {
-                const type = types[(i - 1) % types.length];
-                if (type === '單選題') {
-                    mock.push({
-                        id: i, type: "單選題", question: `質量 50 公克、溫度 20°C 的水，與質量 50 公克、溫度 80°C 的水混合，若無熱量散失，達熱平衡時的水溫為多少？`,
-                        options: ["A. 40°C", "B. 50°C", "C. 60°C", "D. 70°C"],
-                        answer: "B", explanation: "兩杯水質量相同，達熱平衡時末溫為兩者溫度的平均值：(20+80)/2 = 50°C。"
-                    });
-                } else if (type === '是非題') {
-                    mock.push({
-                        id: i, type: "是非題", question: `熱平衡的過程中，高溫物體放出的熱量必定等於低溫物體吸收的熱量（假設無熱量散失）。`,
-                        options: [], answer: "O (是)", explanation: "根據熱量守恆定律，在無熱量散失的情況下，放熱必等於吸熱。"
-                    });
-                } else if (type === '填充題') {
-                    mock.push({
-                        id: i, type: "填充題", question: `熱量傳播的過程中，熱量必定由溫度_______的物體傳向溫度_______的物體。`,
-                        options: [], answer: "高，低", explanation: "熱量傳播的方向取決於溫度的高低，而非熱量的多寡。"
-                    });
-                } else {
-                    mock.push({
-                        id: i, type: "簡答題", question: `請簡述何謂「熱平衡」。`,
-                        options: [], answer: "當兩個不同溫度的物體接觸時，熱量會從高溫物體傳遞到低溫物體，直到兩者溫度相等為止，此狀態稱為熱平衡。", explanation: "熱平衡定義為系統內部各部分溫度達到一致的狀態。"
-                    });
-                }
-            }
-            return mock;
         }
 
         // Render Exam Data
