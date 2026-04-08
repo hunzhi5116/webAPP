@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>私人音樂盒 (資料夾載入版)</title>
+    <title>私人音樂盒 (捷徑啟動優化版)</title>
     
     <!-- PWA 與圖示設定 -->
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3844/3844720.png">
@@ -48,26 +48,17 @@
         #dropZone {
             border: 2px dashed rgba(168, 85, 247, 0.3);
             border-radius: 1rem;
-            padding: 1rem;
+            padding: 1.2rem;
             cursor: pointer;
             background: rgba(168, 85, 247, 0.05);
             transition: 0.3s;
             margin-bottom: 1rem;
         }
-        #dropZone:hover { background: rgba(168, 85, 247, 0.1); border-color: #a855f7; }
-        #dropZone.highlight { border-color: #f59e0b; background: rgba(245, 158, 11, 0.15); animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
-
-        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
-        .mode-btn { 
-            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); 
-            color: #cbd5e1; padding: 6px; border-radius: 8px; font-size: 11px; cursor: pointer;
-        }
-        .mode-btn:hover { background: rgba(168, 85, 247, 0.2); }
+        #dropZone.highlight { border-color: #f59e0b; background: rgba(245, 158, 11, 0.1); transform: scale(1.02); }
 
         #disk {
-            width: 7.5rem; height: 7.5rem;
-            margin: 0 auto 1rem;
+            width: 8rem; height: 8rem;
+            margin: 0 auto 1.2rem;
             background: rgba(88, 28, 135, 0.3);
             border-radius: 50%;
             display: flex;
@@ -81,43 +72,61 @@
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
         input[type="range"] {
-            width: 100%; height: 6px; border-radius: 5px; background: #475569;
-            accent-color: #a855f7; margin: 1rem 0 0.5rem; appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 5px;
+            background: #475569;
+            accent-color: #a855f7;
+            margin: 1.2rem 0 0.5rem;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
         }
 
-        .controls button { background: none; border: none; color: #94a3b8; cursor: pointer; padding: 0.5rem; }
+        .controls button {
+            background: none; border: none; color: #94a3b8; cursor: pointer;
+            padding: 0.5rem; transition: 0.2s;
+        }
+        
         .play-btn {
-            background: #a855f7 !important; color: white !important; border-radius: 50%;
-            width: 3.5rem; height: 3.5rem; display: flex; align-items: center; justify-content: center;
+            background: #a855f7 !important;
+            color: white !important;
+            border-radius: 50%;
+            width: 4rem; height: 4rem;
+            display: flex; align-items: center; justify-content: center;
             box-shadow: 0 8px 15px rgba(168, 85, 247, 0.4);
         }
-        .play-btn:disabled { background: #475569 !important; opacity: 0.5; box-shadow: none; }
+        .play-btn:disabled { background: #475569 !important; opacity: 0.6; cursor: not-allowed; box-shadow: none; }
 
         #playlist {
             list-style: none; padding: 0; max-height: 120px; overflow-y: auto;
             border-top: 1px solid rgba(255,255,255,0.1); margin-top: 1rem;
         }
         #playlist li {
-            padding: 0.6rem; font-size: 0.8rem; color: #94a3b8; border-bottom: 1px solid rgba(255,255,255,0.03);
-            display: flex; justify-content: space-between; align-items: center; cursor: pointer;
+            padding: 0.7rem; font-size: 0.85rem; color: #94a3b8;
+            border-radius: 10px; display: flex; justify-content: space-between; align-items: center;
+            cursor: pointer;
         }
-        #playlist li.active { color: #a855f7; background: rgba(168, 85, 247, 0.1); font-weight: bold; }
+        #playlist li.active { color: #a855f7; background: rgba(168, 85, 247, 0.15); font-weight: bold; }
+
+        .pin-btn { background: none; border: none; color: #64748b; cursor: pointer; padding: 2px; }
+        .pin-btn.pinned { color: #f59e0b !important; }
 
         .shortcuts-panel { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); }
-        .shortcut-title { font-size: 0.7rem; color: #64748b; margin-bottom: 0.6rem; font-weight: bold; }
-        .shortcut-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+        .shortcut-title { font-size: 0.75rem; color: #64748b; margin-bottom: 0.8rem; font-weight: bold; }
+        .shortcut-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; }
         .shortcut-item {
             background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);
-            border-radius: 10px; padding: 0.6rem 0.3rem; text-align: center; cursor: pointer;
+            border-radius: 12px; padding: 0.8rem 0.4rem; text-align: center; cursor: pointer;
+            transition: 0.2s;
         }
-        .shortcut-item.ready { border-color: #a855f7; background: rgba(168, 85, 247, 0.15); box-shadow: 0 0 10px rgba(168,85,247,0.2); }
+        .shortcut-item.matching { border-color: #a855f7; background: rgba(168, 85, 247, 0.1); }
         .shortcut-item .name { font-size: 10px; color: #cbd5e1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .shortcut-item .status { font-size: 8px; color: #64748b; margin-top: 2px; }
-        .ready .status { color: #a855f7; font-weight: bold; }
+        .shortcut-item .time { font-size: 9px; color: #64748b; font-family: monospace; }
 
         #toast {
-            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-            background: #a855f7; color: white; padding: 6px 16px;
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: #a855f7; color: white; padding: 6px 12px;
             border-radius: 20px; font-size: 11px; display: none; z-index: 100;
         }
         .hidden { display: none; }
@@ -126,53 +135,48 @@
 <body>
 
     <div class="glass-card">
-        <div id="toast">提示訊息</div>
+        <div id="toast">訊息提示</div>
 
         <div class="flex justify-between items-center mb-6">
-            <h2 class="text-purple-400 font-bold" style="margin:0; font-size: 1.1rem;">私人音樂盒</h2>
-            <div id="timerDisplay" style="font-size: 10px; color: #a855f7; font-family: monospace;"></div>
+            <h2 class="text-purple-400 font-bold" style="margin:0; font-size: 1.2rem;">私人音樂盒</h2>
+            <button id="timerBtn" style="background:none; border:none; color:white; opacity: 0.6;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            </button>
         </div>
 
         <div id="dropZone" class="text-center">
-            <div id="uploadHint" style="font-size: 0.75rem; color: #94a3b8; line-height: 1.4;">
-                <b style="color:#e2e8f0">載入音檔以開始播放</b><br>建議直接開啟整個資料夾
-            </div>
-            <div class="btn-group">
-                <button class="mode-btn" onclick="event.stopPropagation(); $('fileInput').click()">選取檔案</button>
-                <button class="mode-btn" onclick="event.stopPropagation(); $('folderInput').click()">開啟資料夾</button>
-            </div>
+            <div id="uploadHint" style="font-size: 0.8rem; color: #94a3b8;">點此選取檔案以解鎖播放</div>
             <input type="file" id="fileInput" multiple accept="audio/*" style="display: none;">
-            <input type="file" id="folderInput" webkitdirectory directory style="display: none;">
         </div>
 
         <div class="text-center">
             <div id="disk">
-                <svg id="musicIcon" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="1.5"><path d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
+                <svg id="musicIcon" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="1.5"><path d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
             </div>
             
-            <div id="trackName" style="font-weight: bold; font-size: 0.95rem; margin-bottom: 0.4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">尚未連線檔案</div>
+            <div id="trackName" style="font-weight: bold; font-size: 1rem; margin-bottom: 0.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">尚未載入</div>
             
             <input type="range" id="progressBar" min="0" max="100" value="0">
             
-            <div class="flex justify-between" style="font-size: 10px; color: #94a3b8; font-family: monospace; margin-bottom: 0.8rem;">
+            <div class="flex justify-between" style="font-size: 10px; color: #94a3b8; font-family: monospace; margin-bottom: 1rem;">
                 <span id="curTime">00:00</span>
                 <span id="durTime">00:00</span>
             </div>
 
             <div class="flex items-center justify-between controls">
-                <button id="prevBtn"><svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
+                <button id="prevBtn"><svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
                 <button id="playBtn" class="play-btn" disabled>
-                    <svg id="playIcon" width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                    <svg id="pauseIcon" class="hidden" width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                    <svg id="playIcon" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    <svg id="pauseIcon" class="hidden" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
                 </button>
-                <button id="nextBtn"><svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+                <button id="nextBtn"><svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
             </div>
         </div>
 
         <ul id="playlist"></ul>
 
         <div class="shortcuts-panel">
-            <div class="shortcut-title">常用捷徑 (連線後自動啟動)</div>
+            <div class="shortcut-title">快速啟動捷徑 (需先選檔)</div>
             <div id="shortcutGrid" class="shortcut-grid"></div>
         </div>
 
@@ -184,49 +188,50 @@
         const audio = $('audio');
         let tracks = [], currentIndex = -1;
 
-        // 初始化
+        // 1. 初始化讀取：只讀取「檔名」與「進度」用於顯示
         window.addEventListener('DOMContentLoaded', () => {
             renderShortcuts();
-            const last = JSON.parse(localStorage.getItem('last_played_session') || 'null');
-            if (last) {
-                $('trackName').textContent = "上次暫停：" + last.name.replace(/\.[^/.]+$/, "");
-                $('curTime').textContent = fmt(last.time);
+            const lastSession = JSON.parse(localStorage.getItem('last_played_session') || 'null');
+            if (lastSession) {
+                $('trackName').textContent = lastSession.name.replace(/\.[^/.]+$/, "");
+                $('curTime').textContent = fmt(lastSession.time);
+                $('uploadHint').innerHTML = `上次進度：<span style="color:#f59e0b">${lastSession.name.substring(0,10)}...</span><br><b>點此選取該檔案即可播放</b>`;
             }
         });
 
-        // 處理載入檔案
-        const handleFiles = (e) => {
+        // 2. 核心：選取檔案後觸發比對
+        $('dropZone').onclick = () => $('fileInput').click();
+
+        $('fileInput').onchange = (e) => {
             const files = Array.from(e.target.files).filter(f => f.type.startsWith('audio/') || f.name.match(/\.(mp3|m4a|wav|aac)$/i));
             if (!files.length) return;
             
             tracks = files;
+            const lastSession = JSON.parse(localStorage.getItem('last_played_session') || 'null');
+            const targetName = lastSession ? lastSession.name : null;
+            
+            // 啟用播放鈕
             $('playBtn').disabled = false;
             
-            const last = JSON.parse(localStorage.getItem('last_played_session') || 'null');
-            const targetName = last ? last.name : null;
+            // 比對檔名
+            let foundIdx = tracks.findIndex(t => t.name === targetName);
             
             updatePlaylistUI(targetName);
-            renderShortcuts(); // 載入檔案後更新捷徑狀態
             
-            let foundIdx = tracks.findIndex(t => t.name === targetName);
             if (foundIdx !== -1) {
-                loadTrack(foundIdx, true);
-                showToast("已自動接續上次進度");
+                loadTrack(foundIdx, true); // 找到就自動播
+                showToast("已自動接續播放");
             } else {
-                loadTrack(0, false);
-                showToast(`已成功載入 ${tracks.length} 個音檔`);
+                loadTrack(0, false); // 沒找到就載入第一個，等使用者點
+                showToast(`已載入 ${tracks.length} 個檔案`);
             }
-            $('uploadHint').innerHTML = `<b style="color:#a855f7">已連線資料夾</b><br>共計 ${tracks.length} 個演講檔案`;
+            $('uploadHint').textContent = "檔案已載入，可隨時切換";
         };
-
-        $('fileInput').onchange = handleFiles;
-        $('folderInput').onchange = handleFiles;
-        $('dropZone').onclick = () => $('folderInput').click(); // 預設點擊區塊為開啟資料夾
 
         function loadTrack(i, shouldPlay) {
             if (!tracks[i]) return;
             currentIndex = i;
-            const file = tracks[i];
+            const file = tracks[currentIndex];
             
             if (audio.src) URL.revokeObjectURL(audio.src);
             audio.src = URL.createObjectURL(file);
@@ -238,40 +243,46 @@
             audio.onloadedmetadata = () => {
                 $('durTime').textContent = fmt(audio.duration);
                 const history = JSON.parse(localStorage.getItem('multi_music_history') || '{}');
-                if (history[file.name] > 2) audio.currentTime = history[file.name];
+                if (history[file.name] > 2) {
+                    audio.currentTime = history[file.name];
+                }
                 if (shouldPlay) playTrack();
             };
         }
 
+        // 3. 捷徑點擊：如果沒載入檔案，就引導使用者選檔
         function quickLoad(fileName) {
             const foundIdx = tracks.findIndex(t => t.name === fileName);
             if (foundIdx !== -1) {
                 loadTrack(foundIdx, true);
             } else {
+                // 存入預備狀態，並高亮選檔區
                 const history = JSON.parse(localStorage.getItem('multi_music_history') || '{}');
                 localStorage.setItem('last_played_session', JSON.stringify({ name: fileName, time: history[fileName] || 0 }));
-                $('trackName').textContent = "選取資料夾以解鎖：" + fileName.replace(/\.[^/.]+$/, "");
+                
+                $('trackName').textContent = fileName.replace(/\.[^/.]+$/, "");
                 $('curTime').textContent = fmt(history[fileName] || 0);
+                $('uploadHint').innerHTML = `目標：<span style="color:#f59e0b">${fileName.substring(0,10)}...</span><br><b>請點此選取該檔案</b>`;
+                
                 $('dropZone').classList.add('highlight');
-                showToast("請點擊上方開啟檔案所在的資料夾");
+                showToast("請選取檔案以解鎖存取權");
                 setTimeout(() => $('dropZone').classList.remove('highlight'), 3000);
             }
         }
+
+        // --- 以下為基礎功能支援 ---
 
         function renderShortcuts() {
             const pins = JSON.parse(localStorage.getItem('pinned_files') || '[]');
             const history = JSON.parse(localStorage.getItem('multi_music_history') || '{}');
             const grid = $('shortcutGrid');
-            if (!pins.length) { grid.innerHTML = '<div style="grid-column:span 3; font-size:9px; opacity:0.4;">清單中點擊圖釘加入捷徑</div>'; return; }
-            
-            grid.innerHTML = pins.map(name => {
-                const isReady = tracks.some(t => t.name === name);
-                return `
-                <div class="shortcut-item ${isReady ? 'ready' : ''}" onclick="quickLoad('${name}')">
+            if (!pins.length) { grid.innerHTML = '<div style="grid-column:span 3; font-size:10px; opacity:0.4;">清單中點擊圖釘可加入</div>'; return; }
+            grid.innerHTML = pins.map(name => `
+                <div class="shortcut-item" onclick="quickLoad('${name}')">
                     <div class="name">${name.replace(/\.[^/.]+$/, "")}</div>
-                    <div class="status">${isReady ? '● 已連線' : '待連線'}</div>
+                    <div class="time">${fmt(history[name] || 0)}</div>
                 </div>
-            `}).join('');
+            `).join('');
         }
 
         function togglePin(name) {
@@ -281,7 +292,7 @@
             else pins.splice(idx, 1);
             localStorage.setItem('pinned_files', JSON.stringify(pins));
             renderShortcuts();
-            updatePlaylistUI(tracks[currentIndex]?.name);
+            updatePlaylistUI(name);
         }
 
         function updatePlaylistUI(activeName) {
@@ -289,8 +300,8 @@
             $('playlist').innerHTML = tracks.map((t, i) => `
                 <li class="${t.name === activeName ? 'active' : ''}" onclick="loadTrack(${i}, true)">
                     <div style="flex:1; overflow:hidden; text-overflow:ellipsis;">${i+1}. ${t.name.replace(/\.[^/.]+$/, "")}</div>
-                    <button style="background:none; border:none; color:${pins.includes(t.name)?'#f59e0b':'#475569'}; cursor:pointer;" onclick="event.stopPropagation(); togglePin('${t.name}')">
-                        <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
+                    <button class="pin-btn ${pins.includes(t.name)?'pinned':''}" onclick="event.stopPropagation(); togglePin('${t.name}')">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10V8a2 2 0 00-2-2H5a2 2 0 00-2 2v2M7 10v10a2 2 0 002 2h6a2 2 0 002-2V10M12 6V3M12 21v-3"/></svg>
                     </button>
                 </li>
             `).join('');
@@ -301,10 +312,13 @@
             const cur = audio.currentTime;
             $('progressBar').value = (cur / audio.duration) * 100;
             $('curTime').textContent = fmt(cur);
+            
+            // 存儲紀錄
             const history = JSON.parse(localStorage.getItem('multi_music_history') || '{}');
             history[tracks[currentIndex].name] = cur;
             localStorage.setItem('multi_music_history', JSON.stringify(history));
             localStorage.setItem('last_played_session', JSON.stringify({ name: tracks[currentIndex].name, time: cur }));
+            if (Math.floor(cur) % 10 === 0) renderShortcuts();
         };
 
         function playTrack() { audio.play(); $('playIcon').classList.add('hidden'); $('pauseIcon').classList.remove('hidden'); $('musicIcon').classList.add('animate-spin'); }
