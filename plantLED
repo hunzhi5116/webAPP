@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>植物燈藍牙控制</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .status-dot { height: 12px; width: 12px; border-radius: 50%; display: inline-block; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center p-6">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8">
+        <h1 class="text-2xl font-bold text-center text-green-600 mb-6">植物燈 BLE 控制器</h1>
+        
+        <!-- 連接狀態 -->
+        <div class="flex items-center justify-center mb-8 bg-gray-50 p-3 rounded-lg">
+            <div id="statusDot" class="status-dot bg-red-500 mr-2"></div>
+            <span id="statusText" class="text-gray-600 font-medium">未連線</span>
+        </div>
+
+        <button id="connectBtn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl transition-all mb-8 shadow-md">
+            搜尋並連接設備
+        </button>
+
+        <!-- 控制區 -->
+        <div id="controls" class="space-y-4 opacity-50 pointer-events-none">
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="sendValue('ON')" class="bg-yellow-400 hover:bg-yellow-500 text-white font-bold py-6 rounded-xl text-lg">
+                    手動點亮
+                </button>
+                <button onclick="sendValue('OFF')" class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-6 rounded-xl text-lg">
+                    手動關閉
+                </button>
+            </div>
+            <button onclick="sendValue('AUTO')" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-xl text-lg">
+                    恢復自動模式 (光敏)
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const SERVICE_UUID = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
+        const CHARACTERISTIC_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
+        
+        let bleDevice = null;
+        let bleCharacteristic = null;
+
+        const connectBtn = document.getElementById('connectBtn');
+        const statusText = document.getElementById('statusText');
+        const statusDot = document.getElementById('statusDot');
+        const controls = document.getElementById('controls');
+
+        connectBtn.addEventListener('click', async () => {
+            try {
+                statusText.innerText = "正在掃描...";
+                bleDevice = await navigator.bluetooth.requestDevice({
+                    filters: [{ name: 'ESP32_PlantLight' }],
+                    optionalServices: [SERVICE_UUID]
+                });
+
+                const server = await bleDevice.gatt.connect();
+                const service = await server.getPrimaryService(SERVICE_UUID);
+                bleCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
+
+                statusText.innerText = "已連線";
+                statusDot.classList.replace('bg-red-500', 'bg-green-500');
+                connectBtn.innerText = "斷開連線";
+                controls.classList.remove('opacity-50', 'pointer-events-none');
+                
+                bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+            } catch (error) {
+                console.log(error);
+                statusText.innerText = "連線失敗";
+            }
+        });
+
+        function onDisconnected() {
+            statusText.innerText = "連線已斷開";
+            statusDot.classList.replace('bg-green-500', 'bg-red-500');
+            connectBtn.innerText = "重新連接";
+            controls.classList.add('opacity-50', 'pointer-events-none');
+        }
+
+        async function sendValue(val) {
+            if (!bleCharacteristic) return;
+            const encoder = new TextEncoder();
+            try {
+                await bleCharacteristic.writeValue(encoder.encode(val));
+                console.log('發送成功: ' + val);
+            } catch (error) {
+                console.log('發送失敗: ' + error);
+            }
+        }
+    </script>
+</body>
+</html>
