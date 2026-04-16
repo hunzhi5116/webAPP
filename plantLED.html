@@ -3,11 +3,11 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智慧植物燈 V10.5 專業版</title>
+    <title>智慧植物燈 V10.6 直觀版</title>
     <style>
         :root {
             --primary: #3498db; --success: #2ecc71; --danger: #e74c3c;
-            --purple: #9b59b6; --dark: #34495e; --gray: #95a5a6;   
+            --purple: #9b59b6; --dark: #34495e; --gray: #95a5a6;
         }
         body { font-family: sans-serif; background-color: #f4f7f6; margin: 0; padding: 15px; display: flex; justify-content: center; }
         .container { background: white; width: 100%; max-width: 420px; padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
@@ -16,7 +16,6 @@
         .status-box { background: #f8f9fa; padding: 12px; border-radius: 10px; margin-bottom: 15px; font-size: 14px; border-left: 5px solid var(--gray); }
         .connected { border-left-color: var(--success); }
 
-        /* 按鈕排版 */
         .btn-row { display: flex; gap: 10px; margin: 10px 0; }
         button { flex: 1; padding: 14px; font-size: 16px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; color: white; transition: 0.2s; }
         button:active { transform: scale(0.96); }
@@ -25,50 +24,53 @@
         .btn-auto { background: var(--primary); width: 100%; }
         .btn-on { background: var(--success); }
         .btn-off { background: var(--danger); }
-        .btn-supp { background: var(--purple); width: 100%; margin-top: 10px; }
+        .btn-supp { background: var(--purple); width: 100%; margin-top: 10px; box-shadow: 0 4px 10px rgba(155, 89, 182, 0.2); }
 
-        /* 參數設定區 */
         .settings { background: #fffbe6; padding: 15px; border-radius: 10px; border: 1px solid #ffe58f; margin-top: 15px; }
         .setting-item { margin-bottom: 15px; text-align: left; }
         .setting-item label { display: block; font-weight: bold; font-size: 14px; margin-bottom: 5px; color: #856404; }
-        .setting-item input { width: 100%; }
+        .setting-item input { width: 100%; cursor: pointer; }
         .val-display { float: right; color: var(--purple); font-weight: bold; }
+        .note { font-size: 12px; color: #b7a05d; margin-top: 5px; line-height: 1.4; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>植物燈系統 V10.5</h2>
+        <h2>植物燈系統 V10.6</h2>
         
         <div class="status-box" id="statusBox">
             <div id="connStat">狀態：等待連接...</div>
             <div id="lastCmd">最後指令：無</div>
         </div>
 
-        <button class="btn-connect" onclick="connectBLE()">1. 連接裝置</button>
+        <button class="btn-connect" onclick="connectBLE()">1. 連接 ESP32 裝置</button>
         
-        <button class="btn-auto" onclick="sendBLE('AUTO')">切換：自動感應</button>
+        <button class="btn-auto" onclick="sendBLE('AUTO')">切換：自動感應模式</button>
         
         <div class="btn-row">
-            <button class="btn-on" onclick="sendBLE('ON')">手動：開燈</button>
-            <button class="btn-off" onclick="sendBLE('OFF')">手動：關燈</button>
+            <button class="btn-on" onclick="sendBLE('ON')">手動：燈開</button>
+            <button class="btn-off" onclick="sendBLE('OFF')">手動：燈關</button>
         </div>
 
         <div class="settings">
-            <div style="font-weight: bold; margin-bottom: 10px; color: #d48806;">🌿 植物光需參數自訂</div>
+            <div style="font-weight: bold; margin-bottom: 10px; color: #d48806;">🌿 累積補光參數自訂</div>
             
             <div class="setting-item">
-                <label>補光時段 (分鐘): <span class="val-display" id="v1">1</span></label>
-                <input type="range" id="p1" min="1" max="10" value="1" oninput="updateVal('v1', this.value)">
+                <label>1. 補光時段 (分鐘): <span class="val-display" id="v1">1</span></label>
+                <input type="range" id="p1" min="1" max="60" value="1" oninput="updateVal('v1', this.value)">
+                <div class="note">系統每隔多久評估一次是否需要補光</div>
             </div>
             
             <div class="setting-item">
-                <label>檢測頻率 (秒): <span class="val-display" id="v2">5</span></label>
-                <input type="range" id="p2" min="1" max="30" value="5" oninput="updateVal('v2', this.value)">
+                <label>2. 檢測頻率 (秒): <span class="val-display" id="v2">5</span></label>
+                <input type="range" id="p2" min="1" max="60" value="5" oninput="updateVal('v2', this.value)">
+                <div class="note">紀錄期間每隔幾秒檢測一次光線</div>
             </div>
             
             <div class="setting-item">
-                <label>目標總需求量 (Score): <span class="val-display" id="v3">10</span></label>
-                <input type="range" id="p3" min="5" max="100" value="10" oninput="updateVal('v3', this.value)">
+                <label>3. 植物光需 (分鐘): <span class="val-display" id="v3">0.5</span></label>
+                <input type="range" id="p3" min="0.5" max="60" step="0.5" value="0.5" oninput="updateVal('v3', this.value)">
+                <div class="note">在此時段內，植物應獲得的總光照時數</div>
             </div>
 
             <button class="btn-supp" onclick="sendParams()">啟動：累積補光模式</button>
@@ -93,7 +95,7 @@
                 characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
                 document.getElementById('connStat').innerText = "狀態：已連線";
                 document.getElementById('statusBox').classList.add('connected');
-            } catch (e) { alert("連線失敗"); }
+            } catch (e) { console.log(e); }
         }
 
         async function sendBLE(cmd) {
@@ -103,13 +105,12 @@
             document.getElementById('lastCmd').innerText = "最後指令：" + cmd;
         }
 
-        // 特別發送參數的函數
         async function sendParams() {
             const p1 = document.getElementById('p1').value; // 補光時段 (min)
             const p2 = document.getElementById('p2').value; // 檢測頻率 (sec)
-            const p3 = document.getElementById('p3').value; // 目標 Score
+            const p3 = document.getElementById('p3').value; // 植物光需 (min)
             
-            // 格式: SET:1,5,20 (分別代表 分鐘, 秒, 目標值)
+            // 指令格式: SET:時段,頻率,需求
             const cmd = `SET:${p1},${p2},${p3}`;
             await sendBLE(cmd);
         }
