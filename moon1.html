@@ -1,0 +1,693 @@
+<html lang="zh-Hant"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artemis II 模擬 - 自由發射與重置還原</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000005; font-family: 'Arial', sans-serif; color: white; }
+        canvas { display: block; }
+        
+        /* 右上角的手動微調面板 */
+        #manual-control {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #00d2ff;
+            width: 260px;
+            font-size: 13px;
+        }
+        .slider-group { margin-bottom: 10px; }
+        .slider-group label { display: block; margin-bottom: 5px; color: #aaa; }
+        .slider-group input { width: 100%; }
+        .value-span { color: #00d2ff; font-weight: bold; float: right;}
+        
+        /* 基地切換按鈕 */
+        .btn-base {
+            background: #222; color: white; border: 1px solid #555;
+            padding: 6px 12px; border-radius: 4px; cursor: pointer;
+            width: 48%; font-size: 12px;
+        }
+        .btn-base:hover { background: #444; }
+        .btn-base.active { background: #0055ff; border-color: #00d2ff; }
+
+        /* 左下角的發射控制項 */
+        #launch-control {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        #btn-launch {
+            background: #00aa00;
+            color: white;
+            border: 2px solid #00ffaa;
+            padding: 12px 24px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        #btn-launch:hover { background: #00ff00; }
+        #btn-launch.active { background: #555; border-color: #aaa; cursor: not-allowed; }
+        
+        #stage-display {
+            font-size: 20px;
+            font-weight: bold;
+            background: rgba(255,165,0,0.3);
+            padding: 8px 15px;
+            border-left: 4px solid #ffa500;
+            border-radius: 4px;
+        }
+    </style>
+<style data-id="immersive-translate-input-injected-css">.immersive-translate-input {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 2147483647;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.immersive-translate-attach-loading::after {
+  content: " ";
+
+  --loading-color: #f78fb6;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: block;
+  margin: 12px auto;
+  position: relative;
+  color: white;
+  left: -100px;
+  box-sizing: border-box;
+  animation: immersiveTranslateShadowRolling 1.5s linear infinite;
+
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-2000%, -50%);
+  z-index: 100;
+}
+
+.immersive-translate-loading-spinner {
+  vertical-align: middle !important;
+  width: 10px !important;
+  height: 10px !important;
+  display: inline-block !important;
+  margin: 0 4px !important;
+  border: 2px rgba(221, 244, 255, 0.6) solid !important;
+  border-top: 2px rgba(0, 0, 0, 0.375) solid !important;
+  border-left: 2px rgba(0, 0, 0, 0.375) solid !important;
+  border-radius: 50% !important;
+  padding: 0 !important;
+  -webkit-animation: immersive-translate-loading-animation 0.6s infinite linear !important;
+  animation: immersive-translate-loading-animation 0.6s infinite linear !important;
+}
+
+@-webkit-keyframes immersive-translate-loading-animation {
+  from {
+    -webkit-transform: rotate(0deg);
+  }
+
+  to {
+    -webkit-transform: rotate(359deg);
+  }
+}
+
+@keyframes immersive-translate-loading-animation {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(359deg);
+  }
+}
+
+.immersive-translate-input-loading {
+  --loading-color: #f78fb6;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: block;
+  margin: 12px auto;
+  position: relative;
+  color: white;
+  left: -100px;
+  box-sizing: border-box;
+  animation: immersiveTranslateShadowRolling 1.5s linear infinite;
+}
+
+@keyframes immersiveTranslateShadowRolling {
+  0% {
+    box-shadow: 0px 0 rgba(255, 255, 255, 0), 0px 0 rgba(255, 255, 255, 0),
+      0px 0 rgba(255, 255, 255, 0), 0px 0 rgba(255, 255, 255, 0);
+  }
+
+  12% {
+    box-shadow: 100px 0 var(--loading-color), 0px 0 rgba(255, 255, 255, 0),
+      0px 0 rgba(255, 255, 255, 0), 0px 0 rgba(255, 255, 255, 0);
+  }
+
+  25% {
+    box-shadow: 110px 0 var(--loading-color), 100px 0 var(--loading-color),
+      0px 0 rgba(255, 255, 255, 0), 0px 0 rgba(255, 255, 255, 0);
+  }
+
+  36% {
+    box-shadow: 120px 0 var(--loading-color), 110px 0 var(--loading-color),
+      100px 0 var(--loading-color), 0px 0 rgba(255, 255, 255, 0);
+  }
+
+  50% {
+    box-shadow: 130px 0 var(--loading-color), 120px 0 var(--loading-color),
+      110px 0 var(--loading-color), 100px 0 var(--loading-color);
+  }
+
+  62% {
+    box-shadow: 200px 0 rgba(255, 255, 255, 0), 130px 0 var(--loading-color),
+      120px 0 var(--loading-color), 110px 0 var(--loading-color);
+  }
+
+  75% {
+    box-shadow: 200px 0 rgba(255, 255, 255, 0), 200px 0 rgba(255, 255, 255, 0),
+      130px 0 var(--loading-color), 120px 0 var(--loading-color);
+  }
+
+  87% {
+    box-shadow: 200px 0 rgba(255, 255, 255, 0), 200px 0 rgba(255, 255, 255, 0),
+      200px 0 rgba(255, 255, 255, 0), 130px 0 var(--loading-color);
+  }
+
+  100% {
+    box-shadow: 200px 0 rgba(255, 255, 255, 0), 200px 0 rgba(255, 255, 255, 0),
+      200px 0 rgba(255, 255, 255, 0), 200px 0 rgba(255, 255, 255, 0);
+  }
+}
+
+.immersive-translate-modal {
+  position: fixed;
+  z-index: 2147483647;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgb(0, 0, 0);
+  background-color: rgba(0, 0, 0, 0.4);
+  font-size: 15px;
+}
+
+.immersive-translate-modal-content {
+  background-color: #fefefe;
+  margin: 10% auto;
+  padding: 40px 24px 24px;
+  border-radius: 12px;
+  width: 350px;
+  font-family: system-ui, -apple-system, "Segoe UI", "Roboto", "Ubuntu",
+    "Cantarell", "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", "Noto Color Emoji";
+  position: relative;
+}
+
+@media screen and (max-width: 768px) {
+  .immersive-translate-modal-content {
+    margin: 25% auto !important;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .immersive-translate-modal-content {
+    width: 80vw !important;
+    margin: 20vh auto !important;
+    padding: 20px 12px 12px !important;
+  }
+
+  .immersive-translate-modal-title {
+    font-size: 14px !important;
+  }
+
+  .immersive-translate-modal-body {
+    font-size: 13px !important;
+    max-height: 60vh !important;
+  }
+
+  .immersive-translate-btn {
+    font-size: 13px !important;
+    padding: 8px 16px !important;
+    margin: 0 4px !important;
+  }
+
+  .immersive-translate-modal-footer {
+    gap: 6px !important;
+    margin-top: 16px !important;
+  }
+}
+
+.immersive-translate-modal .immersive-translate-modal-content-in-input {
+  max-width: 500px;
+}
+.immersive-translate-modal-content-in-input .immersive-translate-modal-body {
+  text-align: left;
+  max-height: unset;
+}
+
+.immersive-translate-modal-title {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #333333;
+}
+
+.immersive-translate-modal-body {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 400;
+  color: #333333;
+  margin-top: 24px;
+}
+
+@media screen and (max-width: 768px) {
+  .immersive-translate-modal-body {
+    max-height: 250px;
+    overflow-y: auto;
+  }
+}
+
+.immersive-translate-close {
+  color: #666666;
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.immersive-translate-close:hover,
+.immersive-translate-close:focus {
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.immersive-translate-modal-footer {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
+
+.immersive-translate-btn {
+  width: fit-content;
+  color: #fff;
+  background-color: #ea4c89;
+  border: none;
+  font-size: 14px;
+  margin: 0 8px;
+  padding: 9px 30px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.immersive-translate-btn-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.immersive-translate-btn:hover {
+  background-color: #f082ac;
+}
+.immersive-translate-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.immersive-translate-btn:disabled:hover {
+  background-color: #ea4c89;
+}
+
+.immersive-translate-link-btn {
+  background-color: transparent;
+  color: #ea4c89;
+  border: none;
+  cursor: pointer;
+  height: 30px;
+  line-height: 30px;
+}
+
+.immersive-translate-cancel-btn {
+  /* gray color */
+  background-color: rgb(89, 107, 120);
+}
+
+.immersive-translate-cancel-btn:hover {
+  background-color: hsl(205, 20%, 32%);
+}
+
+.immersive-translate-action-btn {
+  background-color: transparent;
+  color: #ea4c89;
+  border: 1px solid #ea4c89;
+}
+
+.immersive-translate-btn svg {
+  margin-right: 5px;
+}
+
+.immersive-translate-link {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-drag: none;
+  text-decoration: none;
+  color: #ea4c89;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+}
+
+.immersive-translate-primary-link {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-drag: none;
+  text-decoration: none;
+  color: #ea4c89;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+}
+
+.immersive-translate-modal input[type="radio"] {
+  margin: 0 6px;
+  cursor: pointer;
+}
+
+.immersive-translate-modal label {
+  cursor: pointer;
+}
+
+.immersive-translate-close-action {
+  position: absolute;
+  top: 2px;
+  right: 0px;
+  cursor: pointer;
+}
+
+.imt-primary-button {
+  display: flex;
+  padding: 12px 80px;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  border-radius: 8px;
+  background: #ea4c89;
+  color: #fff;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 24px;
+  border: none;
+  cursor: pointer;
+}
+
+.imt-retry-text {
+  color: #999;
+  text-align: center;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 21px;
+  cursor: pointer;
+}
+
+.imt-action-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.imt-modal-content-text {
+  text-align: left;
+  color: #333;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+}
+
+.imt-linear-gradient-text {
+  background: linear-gradient(90deg, #00a6ff 0%, #c369ff 52.4%, #ff4590 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.imt-flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.imt-linear-black-btn {
+  border-radius: 50px;
+  background: linear-gradient(66deg, #222 19%, #696969 94.25%);
+  height: 48px;
+  width: 100%;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  justify-content: center;
+}
+</style></head>
+<body>
+
+<div id="manual-control">
+    <div style="font-weight:bold; color:#00d2ff; margin-bottom:10px;">🛠️ 發射基地與位置微調</div>
+    
+    <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+        <button id="btn-usa" class="btn-base">🇺🇸 美國佛州 (事實)</button>
+        <button id="btn-tw" class="btn-base active">🇹🇼 台灣旭海 (創意)</button>
+    </div>
+    
+    <div class="slider-group">
+        <label>左右位置 (X 軸) <span id="valX" class="value-span">-0.55</span></label>
+        <input type="range" id="slipX" min="-8" max="8" step="0.05" value="-2.20" disabled="">
+    </div>
+    
+    <div class="slider-group">
+        <label>上下位置 (Y 軸) <span id="valY" class="value-span">3.50</span></label>
+        <input type="range" id="slipY" min="-8" max="8" step="0.05" value="3.75" disabled="">
+    </div>
+    
+    <div class="slider-group">
+        <label>前後位置 (Z 軸) <span id="valZ" class="value-span">-8.00</span></label>
+        <input type="range" id="slipZ" min="-8.5" max="8.5" step="0.05" value="7.25" disabled="">
+    </div>
+    <div style="font-size:11px; color:#888;">提示：點擊上方基地按鈕，可以讓飛上天的火箭「瞬間落地」還原回發射台喔！</div>
+</div>
+
+<div id="launch-control">
+    <div id="stage-display" style="background: rgba(0, 255, 0, 0.2); border-left-color: rgb(0, 255, 170);">🏁 狀態：已進入初步軌道高度</div>
+    <button id="btn-launch" class="active">🚀 發射完成。</button>
+</div>
+
+<script src="./moon_files/three.min.js.下載"></script>
+<script src="./moon_files/OrbitControls.js.下載"></script>
+
+<script>
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    camera.position.set(2, 4, 12); 
+    controls.target.set(0, 0, 0); 
+    controls.update();
+
+    scene.add(new THREE.AmbientLight(0x666666));
+    const sunLight = new THREE.DirectionalLight(0xffffff, 1.8);
+    sunLight.position.set(30, 25, 20);
+    scene.add(sunLight);
+
+    const textureLoader = new THREE.TextureLoader();
+    const earthRadius = 8; 
+    const earthGeometry = new THREE.SphereGeometry(earthRadius, 64, 64);
+    const earthMaterial = new THREE.MeshPhongMaterial({
+        map: textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg'),
+        bumpMap: textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_normal_2048.jpg'),
+        bumpScale: 0.05,
+        specularMap: textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_specular_2048.jpg'),
+        specular: new THREE.Color('grey')
+    });
+    const earth = new THREE.Mesh(earthGeometry, earthMaterial);
+    earth.rotation.y = -0.45; 
+    scene.add(earth);
+
+    const shipGroup = new THREE.Group();
+    const shipMat = new THREE.MeshPhongMaterial({ color: 0xffffff });
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.8, 16), shipMat);
+    shipGroup.add(body);
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.4, 16), shipMat);
+    cone.position.y = 0.6; 
+    shipGroup.add(cone);
+    scene.add(shipGroup);
+
+    const fireGeom = new THREE.ConeGeometry(0.12, 0.8, 16);
+    const fireMat = new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.9 });
+    const fire = new THREE.Mesh(fireGeom, fireMat);
+    fire.position.y = -0.8; 
+    fire.rotation.x = Math.PI; 
+    fire.visible = false; 
+    shipGroup.add(fire);
+
+    const slipX = document.getElementById('slipX');
+    const slipY = document.getElementById('slipY');
+    const slipZ = document.getElementById('slipZ');
+    const valX = document.getElementById('valX');
+    const valY = document.getElementById('valY');
+    const valZ = document.getElementById('valZ');
+
+    let currentGroundPos = new THREE.Vector3(); 
+
+    function updateShipPosition() {
+        if (missionStage === "PENDING") {
+            const x = parseFloat(slipX.value);
+            const y = parseFloat(slipY.value);
+            const z = parseFloat(slipZ.value);
+            
+            valX.innerText = x.toFixed(2);
+            valY.innerText = y.toFixed(2);
+            valZ.innerText = z.toFixed(2);
+            
+            currentGroundPos.set(x, y, z);
+            shipGroup.position.set(x, y, z);
+            
+            const normal = new THREE.Vector3(x, y, z).normalize();
+            const upVector = new THREE.Vector3(0, 1, 0);
+            shipGroup.quaternion.setFromUnitVectors(upVector, normal);
+        }
+    }
+
+    slipX.addEventListener('input', updateShipPosition);
+    slipY.addEventListener('input', updateShipPosition);
+    slipZ.addEventListener('input', updateShipPosition);
+
+    const usaCoords = { x: -2.20, y: 3.75, z: 7.25 };  
+    const twCoords = { x: -0.55, y: 3.50, z: -8.00 };  
+
+    const btnLaunch = document.getElementById('btn-launch');
+    const stageDisplay = document.getElementById('stage-display');
+
+    // 🔥 核心修正：將「重置/還原發射台」寫成一個函數
+    function resetToPad(coords, cameraPos, lightPos) {
+        // 1. 重置動畫變數
+        missionStage = "PENDING";
+        liftAltitude = 0;
+        fire.visible = false;
+
+        // 2. 恢復按鈕與狀態文字
+        btnLaunch.innerText = "🚀 點火升空";
+        btnLaunch.classList.remove('active');
+        stageDisplay.innerText = "🔴 狀態：待命 (T-0)";
+        stageDisplay.style.background = "rgba(255,165,0,0.3)";
+        stageDisplay.style.borderLeftColor = "#ffa500";
+
+        // 3. 解鎖滑動條
+        slipX.disabled = false;
+        slipY.disabled = false;
+        slipZ.disabled = false;
+
+        // 4. 設定新位置並更新
+        slipX.value = coords.x;
+        slipY.value = coords.y;
+        slipZ.value = coords.z;
+        updateShipPosition();
+        
+        // 5. 轉移鏡頭
+        camera.position.set(cameraPos.x, cameraPos.y, cameraPos.z);
+        sunLight.position.set(lightPos.x, lightPos.y, lightPos.z);
+        controls.target.set(coords.x, coords.y * 0.8, coords.z);
+        controls.update();
+    }
+
+    document.getElementById('btn-usa').addEventListener('click', (e) => {
+        document.querySelectorAll('.btn-base').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        // 無論剛剛是在天上還是哪裡，一鍵點擊立刻落地還原到佛州！
+        resetToPad(usaCoords, {x: 2, y: 4, z: 12}, {x: 30, y: 25, z: 20});
+    });
+
+    document.getElementById('btn-tw').addEventListener('click', (e) => {
+        document.querySelectorAll('.btn-base').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        // 無論剛剛是在天上還是哪裡，一鍵點擊立刻落地還原到台灣！
+        resetToPad(twCoords, {x: -1, y: 5, z: -12}, {x: -30, y: 25, z: -20});
+    });
+
+    let missionStage = "PENDING"; 
+    let liftAltitude = 0; 
+    const maxLiftAltitude = 5; 
+
+    btnLaunch.addEventListener('click', () => {
+        if (missionStage === "PENDING") {
+            missionStage = "LAUNCHING";
+            btnLaunch.innerText = "🚀 正在垂直上升中...";
+            btnLaunch.classList.add('active');
+            stageDisplay.innerText = "🔥 狀態：點火升空！";
+            stageDisplay.style.background = "rgba(0,255,0,0.2)";
+            stageDisplay.style.borderLeftColor = "#00ffaa";
+            fire.visible = true; 
+
+            slipX.disabled = true;
+            slipY.disabled = true;
+            slipZ.disabled = true;
+        }
+    });
+
+    updateShipPosition();
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        if (missionStage === "LAUNCHING") {
+            liftAltitude += 0.02; 
+
+            const liftNormal = currentGroundPos.clone().normalize();
+            const newPos = currentGroundPos.clone().add(liftNormal.multiplyScalar(liftAltitude));
+            shipGroup.position.copy(newPos);
+
+            stageDisplay.innerText = `🌔 上升高度：${(liftAltitude * 1000).toFixed(0)} 公里`;
+
+            if (liftAltitude >= maxLiftAltitude) {
+                missionStage = "FINISHED";
+                fire.visible = false; 
+                stageDisplay.innerText = "🏁 狀態：已進入初步軌道高度";
+                btnLaunch.innerText = "🚀 發射完成。";
+            }
+        }
+
+        controls.update();
+        renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+</script><canvas width="1026" height="911" style="display: block; width: 1026px; height: 911px;"></canvas><canvas width="1920" height="945" style="display: block; width: 1920px; height: 945px;"></canvas>
+
+<div id="immersive-translate-popup" style="all: initial"></div></body></html>
