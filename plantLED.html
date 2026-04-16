@@ -36,6 +36,9 @@
             <button onclick="sendValue('AUTO')" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-xl text-lg">
                     恢復自動模式 (光敏)
             </button>
+            <button onclick="sendBLE('SUPP')" style="background-color: #9b59b6; color: white; padding: 15px; font-size: 18px; border: none; border-radius: 8px; margin: 5px;">
+    啟動累積補光模式
+            </button>
         </div>
     </div>
 
@@ -82,6 +85,15 @@
             controls.classList.add('opacity-50', 'pointer-events-none');
         }
 
+        // 確保您的 sendBLE 函數能處理字串指令
+        function sendBLE(cmd) {
+            if (characteristic) {
+                let encoder = new TextEncoder();
+                characteristic.writeValue(encoder.encode(cmd));
+                console.log("Sent: " + cmd);
+            }
+        }
+        
         async function sendValue(val) {
             if (!bleCharacteristic) return;
             const encoder = new TextEncoder();
