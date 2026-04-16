@@ -1,107 +1,108 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>植物燈藍牙控制</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>智慧植物燈 V10.4 監控面板</title>
     <style>
-        .status-dot { height: 12px; width: 12px; border-radius: 50%; display: inline-block; }
+        :root {
+            --primary: #3498db;
+            --success: #2ecc71;
+            --danger: #e74c3c;
+            --warning: #f1c40f;
+            --purple: #9b59b6;
+            --dark: #34495e;
+        }
+        body { font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; background-color: #ecf0f1; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { background: white; width: 100%; max-width: 400px; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        h2 { color: var(--dark); margin-bottom: 25px; font-size: 24px; }
+        
+        .status-box { background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: left; border-left: 5px solid #bdc3c7; }
+        .status-box.connected { border-left-color: var(--success); }
+        
+        button { width: 100%; padding: 16px; margin: 8px 0; font-size: 18px; font-weight: bold; border: none; border-radius: 12px; cursor: pointer; transition: all 0.2s; color: white; }
+        button:active { transform: scale(0.98); opacity: 0.9; }
+        
+        .btn-connect { background-color: var(--dark); margin-bottom: 20px; }
+        .btn-auto { background-color: var(--primary); }
+        .btn-on { background-color: var(--success); }
+        .btn-off { background-color: var(--danger); }
+        .btn-supp { background-color: var(--purple); margin-top: 15px; box-shadow: 0 4px 15px rgba(155, 89, 182, 0.3); }
+        
+        .info-text { font-size: 14px; color: #7f8c8d; margin-top: 5px; }
+        .last-cmd { font-weight: bold; color: var(--purple); }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col items-center p-6">
-    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8">
-        <h1 class="text-2xl font-bold text-center text-green-600 mb-6">植物燈 BLE 控制器</h1>
+<body>
+    <div class="container">
+        <h2>植物燈系統控制</h2>
         
-        <!-- 連接狀態 -->
-        <div class="flex items-center justify-center mb-8 bg-gray-50 p-3 rounded-lg">
-            <div id="statusDot" class="status-dot bg-red-500 mr-2"></div>
-            <span id="statusText" class="text-gray-600 font-medium">未連線</span>
+        <div class="status-box" id="statusBox">
+            <div id="connStat">狀態：等待連接...</div>
+            <div class="info-text">最後發送：<span id="lastCmdText" class="last-cmd">無</span></div>
         </div>
 
-        <button id="connectBtn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl transition-all mb-8 shadow-md">
-            搜尋並連接設備
-        </button>
-
-        <!-- 控制區 -->
-        <div id="controls" class="space-y-4 opacity-50 pointer-events-none">
-            <div class="grid grid-cols-2 gap-4">
-                <button onclick="sendValue('ON')" class="bg-yellow-400 hover:bg-yellow-500 text-white font-bold py-6 rounded-xl text-lg">
-                    手動點亮
-                </button>
-                <button onclick="sendValue('OFF')" class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-6 rounded-xl text-lg">
-                    手動關閉
-                </button>
-            </div>
-            <button onclick="sendValue('AUTO')" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-xl text-lg">
-                    恢復自動模式 (光敏)
-            </button>
-            <button onclick="sendBLE('SUPP')" style="background-color: #9b59b6; color: white; padding: 15px; font-size: 18px; border: none; border-radius: 8px; margin: 5px;">
-    啟動累積補光模式
-            </button>
-        </div>
+        <button class="btn-connect" onclick="connectBLE()">1. 連接 ESP32 裝置</button>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+        
+        <button class="btn-auto" onclick="sendBLE('AUTO')">切換：自動感應模式</button>
+        <button class="btn-on" onclick="sendBLE('ON')">手動：強制開啟 LED</button>
+        <button class="btn-off" onclick="sendBLE('OFF')">手動：強制關閉 LED</button>
+        
+        <button class="btn-supp" onclick="sendBLE('SUPP')">啟動：智慧累積補光模式</button>
+        <p class="info-text">※ 補光模式將執行「1分紀錄 + 1分補光」循環</p>
     </div>
 
     <script>
-        const SERVICE_UUID = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
-        const CHARACTERISTIC_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
-        
-        let bleDevice = null;
-        let bleCharacteristic = null;
+        let device, characteristic;
+        // 必須與 ESP32 程式碼中的 UUID 完全一致
+        const SERVICE_UUID        = "4fafc201-1fb5-459e-8fcc-c5c9c331914b";
+        const CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
 
-        const connectBtn = document.getElementById('connectBtn');
-        const statusText = document.getElementById('statusText');
-        const statusDot = document.getElementById('statusDot');
-        const controls = document.getElementById('controls');
-
-        connectBtn.addEventListener('click', async () => {
+        async function connectBLE() {
             try {
-                statusText.innerText = "正在掃描...";
-                bleDevice = await navigator.bluetooth.requestDevice({
-                    filters: [{ name: 'ESP32_PlantLight' }],
+                document.getElementById('connStat').innerText = "狀態：掃描中...";
+                device = await navigator.bluetooth.requestDevice({
+                    filters: [{ namePrefix: 'ESP32' }],
                     optionalServices: [SERVICE_UUID]
                 });
-
-                const server = await bleDevice.gatt.connect();
-                const service = await server.getPrimaryService(SERVICE_UUID);
-                bleCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
-
-                statusText.innerText = "已連線";
-                statusDot.classList.replace('bg-red-500', 'bg-green-500');
-                connectBtn.innerText = "斷開連線";
-                controls.classList.remove('opacity-50', 'pointer-events-none');
                 
-                bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+                const server = await device.gatt.connect();
+                const service = await server.getPrimaryService(SERVICE_UUID);
+                characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
+                
+                document.getElementById('connStat').innerText = "狀態：連線成功";
+                document.getElementById('statusBox').classList.add('connected');
+                
+                // 監聽斷開事件
+                device.addEventListener('gattserverdisconnected', () => {
+                    document.getElementById('connStat').innerText = "狀態：連線已中斷";
+                    document.getElementById('statusBox').classList.remove('connected');
+                });
             } catch (error) {
-                console.log(error);
-                statusText.innerText = "連線失敗";
-            }
-        });
-
-        function onDisconnected() {
-            statusText.innerText = "連線已斷開";
-            statusDot.classList.replace('bg-green-500', 'bg-red-500');
-            connectBtn.innerText = "重新連接";
-            controls.classList.add('opacity-50', 'pointer-events-none');
-        }
-
-        // 確保您的 sendBLE 函數能處理字串指令
-        function sendBLE(cmd) {
-            if (characteristic) {
-                let encoder = new TextEncoder();
-                characteristic.writeValue(encoder.encode(cmd));
-                console.log("Sent: " + cmd);
+                console.error(error);
+                document.getElementById('connStat').innerText = "狀態：連線失敗";
             }
         }
-        
-        async function sendValue(val) {
-            if (!bleCharacteristic) return;
-            const encoder = new TextEncoder();
+
+        async function sendBLE(cmd) {
+            if (!characteristic) {
+                alert("請先點擊上方按鈕連接 ESP32 裝置！");
+                return;
+            }
+
             try {
-                await bleCharacteristic.writeValue(encoder.encode(val));
-                console.log('發送成功: ' + val);
+                // 確保指令轉換為 Uint8Array
+                let encoder = new TextEncoder();
+                let data = encoder.encode(cmd);
+                await characteristic.writeValue(data);
+                
+                // 更新網頁上的最後指令顯示
+                document.getElementById('lastCmdText').innerText = cmd;
+                console.log("已發送指令: " + cmd);
             } catch (error) {
-                console.log('發送失敗: ' + error);
+                console.error("發送失敗:", error);
+                document.getElementById('connStat').innerText = "狀態：發送指令失敗";
             }
         }
     </script>
